@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/cshekharsharma/photon/utils/filesys"
@@ -23,13 +24,35 @@ type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+const DefaultHTTPRequestTimeout = 10 * time.Second
+
 var (
+	defaultHTTPRequestTimeoutNanos atomic.Int64
+
 	readAllFn   = io.ReadAll
 	callStubFn  = httpstub.CallStub
 	closeBodyFn = func(c io.Closer) error {
 		return c.Close()
 	}
 )
+
+func init() {
+	SetDefaultHTTPRequestTimeout(DefaultHTTPRequestTimeout)
+}
+
+// SetDefaultHTTPRequestTimeout configures the package default used when a
+// RequestEntity has no timeout and the caller context has no deadline.
+func SetDefaultHTTPRequestTimeout(timeout time.Duration) {
+	if timeout <= 0 {
+		timeout = DefaultHTTPRequestTimeout
+	}
+	defaultHTTPRequestTimeoutNanos.Store(int64(timeout))
+}
+
+// GetDefaultHTTPRequestTimeout returns the current package default request timeout.
+func GetDefaultHTTPRequestTimeout() time.Duration {
+	return time.Duration(defaultHTTPRequestTimeoutNanos.Load())
+}
 
 // RequestEntity is an input model for sending http requests to remote URL.
 // This struct contains all required properties that are required
@@ -124,11 +147,8 @@ func IsHttpRequest(r *http.Request) bool {
 //   - (map[string]interface{}, error): On success, the parsed JSON response and no error;
 //     otherwise, an empty map and an error describing what went wrong.
 func MakeHTTPRequest(ctx context.Context, client HttpClient, request RequestEntity) (responseObject map[string]interface{}, err error) {
-	var cancel func()
-	if request.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, request.Timeout)
-		defer cancel()
-	}
+	ctx, cancel := httpRequestContext(ctx, request.Timeout)
+	defer cancel()
 
 	u, err := url.Parse(request.Url)
 	if err != nil {
@@ -227,6 +247,16 @@ func MakeHTTPRequest(ctx context.Context, client HttpClient, request RequestEnti
 	}
 
 	return responseObject, nil
+}
+
+func httpRequestContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if _, hasDeadline := ctx.Deadline(); hasDeadline {
+		return ctx, func() {}
+	}
+	if timeout <= 0 {
+		timeout = GetDefaultHTTPRequestTimeout()
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 // ValidateAndFetchGetParams extracts and validates GET parameters from the request based on the provided keys map.

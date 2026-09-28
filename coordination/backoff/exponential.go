@@ -229,6 +229,10 @@ func (b *Backoff) randFloat() float64 {
 //	fmt.Println(val)
 func (b *Backoff) Retry(ctx context.Context, fn func(context.Context, ...any) (any, error), args ...any) (any, error) {
 	for attempt := 0; attempt <= b.MaxRetries; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
 		innerCtx := ctx
 		var cancel context.CancelFunc
 

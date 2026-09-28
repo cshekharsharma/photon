@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/cshekharsharma/photon/server/grpc/client/interceptors"
@@ -18,6 +19,28 @@ import (
 )
 
 var grpcNewClientFn = grpc.NewClient
+
+const DefaultMinConnectTimeout = 5 * time.Second
+
+var defaultMinConnectTimeoutNanos atomic.Int64
+
+func init() {
+	SetDefaultMinConnectTimeout(DefaultMinConnectTimeout)
+}
+
+// SetDefaultMinConnectTimeout configures the package default used when
+// ClientOptions.MinConnectTimeout is unset.
+func SetDefaultMinConnectTimeout(timeout time.Duration) {
+	if timeout <= 0 {
+		timeout = DefaultMinConnectTimeout
+	}
+	defaultMinConnectTimeoutNanos.Store(int64(timeout))
+}
+
+// GetDefaultMinConnectTimeout returns the current package default min connect timeout.
+func GetDefaultMinConnectTimeout() time.Duration {
+	return time.Duration(defaultMinConnectTimeoutNanos.Load())
+}
 
 // Client defines the interface for GRPCClient, making it testable.
 type Client interface {
@@ -43,6 +66,9 @@ func NewGRPCClient(opts *ClientOptions) (Client, error) {
 	}
 
 	backoffConfig := constructBackoffConfig(opts)
+	if opts.MinConnectTimeout <= 0 {
+		opts.MinConnectTimeout = GetDefaultMinConnectTimeout()
+	}
 
 	dialOptions := []grpc.DialOption{
 		grpc.WithConnectParams(grpc.ConnectParams{
@@ -99,6 +125,9 @@ func (c *GRPCClient) Close() error {
 
 // HealthCheck checks if the gRPC server is healthy.
 func (c *GRPCClient) HealthCheck(ctx context.Context) error {
+	ctx, cancel := c.healthCheckContext(ctx)
+	defer cancel()
+
 	hc := grpc_health_v1.NewHealthClient(c.conn)
 	resp, err := hc.Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: ""})
 
@@ -111,6 +140,18 @@ func (c *GRPCClient) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *GRPCClient) healthCheckContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if _, hasDeadline := ctx.Deadline(); hasDeadline {
+		return ctx, func() {}
+	}
+
+	timeout := GetDefaultMinConnectTimeout()
+	if c != nil && c.opts != nil && c.opts.MinConnectTimeout > 0 {
+		timeout = c.opts.MinConnectTimeout
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 func constructBackoffConfig(opts *ClientOptions) backoff.Config {

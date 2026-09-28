@@ -266,3 +266,21 @@ func TestRetry(t *testing.T) {
 		t.Errorf("expected nil value when retries exhausted, got %v", val)
 	}
 }
+
+func TestRetryDoesNotInvokeCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	called := false
+
+	_, err := NewBackoff().Retry(ctx, func(context.Context, ...any) (any, error) {
+		called = true
+		return nil, nil
+	})
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if called {
+		t.Fatal("retry function should not run after context cancellation")
+	}
+}

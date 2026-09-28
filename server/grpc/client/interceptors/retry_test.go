@@ -2,7 +2,10 @@ package interceptors
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"errors"
+	"io"
+	"math/big"
 	"testing"
 	"time"
 
@@ -120,4 +123,110 @@ func TestRetryInterceptorStopsBackoffOnContextCancel(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 1, callCount)
 	assert.Less(t, time.Since(start), 90*time.Millisecond)
+}
+
+func TestRetryInterceptorStopsWhenContextCancelsDuringBackoff(t *testing.T) {
+	orig := cryptoRandInt
+	cryptoRandInt = func(_ io.Reader, _ *big.Int) (*big.Int, error) {
+		return big.NewInt(20_000_000), nil
+	}
+	defer func() { cryptoRandInt = orig }()
+
+	interceptor := RetryInterceptor(3)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	callCount := 0
+	invoker := func(ctx context.Context, method string, req, reply interface{},
+		cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+		callCount++
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+		return status.Error(codes.Unavailable, "transient")
+	}
+
+	err := interceptor(
+		ctx,
+		"/test.Service/Method",
+		nil,
+		nil,
+		nil,
+		invoker,
+	)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, 1, callCount)
+}
+
+func TestRetryInterceptorDoesNotInvokeCanceledContext(t *testing.T) {
+	interceptor := RetryInterceptor(1)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	callCount := 0
+
+	err := interceptor(
+		ctx,
+		"/test.Service/Method",
+		nil,
+		nil,
+		nil,
+		func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+			callCount++
+			return nil
+		},
+	)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Zero(t, callCount)
+}
+
+func TestRetryInterceptorNegativeRetries(t *testing.T) {
+	interceptor := RetryInterceptor(-1)
+	callCount := 0
+
+	err := interceptor(
+		context.Background(),
+		"/test.Service/Method",
+		nil,
+		nil,
+		nil,
+		func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) error {
+			callCount++
+			return status.Error(codes.Unavailable, "transient")
+		},
+	)
+
+	assert.Error(t, err)
+	assert.Equal(t, 1, callCount)
+}
+
+func TestRetryHelpers(t *testing.T) {
+	assert.True(t, isRetryableGRPCError(context.Background(), status.Error(codes.ResourceExhausted, "slow down")))
+	assert.False(t, isRetryableGRPCError(context.Background(), errors.New("plain error")))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.False(t, isRetryableGRPCError(ctx, status.Error(codes.Unavailable, "transient")))
+
+	assert.Equal(t, 200*time.Millisecond, nextRetryDelay(100*time.Millisecond))
+	assert.Equal(t, 2*time.Second, nextRetryDelay(2*time.Second))
+}
+
+func TestJitterRetryDelay(t *testing.T) {
+	orig := cryptoRandInt
+	defer func() { cryptoRandInt = orig }()
+
+	assert.Equal(t, time.Nanosecond, jitterRetryDelay(time.Nanosecond))
+
+	cryptoRandInt = func(_ io.Reader, _ *big.Int) (*big.Int, error) {
+		return nil, errors.New("entropy unavailable")
+	}
+	assert.Equal(t, 100*time.Millisecond, jitterRetryDelay(100*time.Millisecond))
+
+	cryptoRandInt = cryptorand.Int
+	got := jitterRetryDelay(100 * time.Millisecond)
+	assert.GreaterOrEqual(t, got, 80*time.Millisecond)
+	assert.LessOrEqual(t, got, 120*time.Millisecond)
 }

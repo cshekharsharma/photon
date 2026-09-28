@@ -354,6 +354,12 @@ func (c *restClient) handleRequestError(ctx context.Context, attempt int, reques
 	if requestErr == nil {
 		return false, nil
 	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return false, ctxErr
+	}
+	if errors.Is(requestErr, context.Canceled) {
+		return false, requestErr
+	}
 	if !isRetryableNetErr(requestErr) || attempt == c.retryMaxAttempts {
 		return false, requestErr
 	}
@@ -445,9 +451,12 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 
 func isRetryableNetErr(err error) bool {
 	var ne net.Error
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
 
 	if errors.As(err, &ne) {
-		return ne.Timeout()
+		return ne.Timeout() || isTemporaryNetErr(ne)
 	}
 
 	s := strings.ToLower(err.Error())
@@ -456,4 +465,13 @@ func isRetryableNetErr(err error) bool {
 		strings.Contains(strings.ToLower(s), "timeout") ||
 		strings.Contains(strings.ToLower(s), "tls handshake") ||
 		strings.Contains(strings.ToLower(s), "connection refused")
+}
+
+type temporaryNetError interface {
+	Temporary() bool
+}
+
+func isTemporaryNetErr(err error) bool {
+	temporary, ok := err.(temporaryNetError)
+	return ok && temporary.Temporary()
 }

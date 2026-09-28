@@ -408,6 +408,16 @@ func (c *captureHeaderClient) Do(req *http.Request) (*http.Response, error) {
 	return jsonResponse(map[string]interface{}{"ok": true}, http.StatusOK), nil
 }
 
+type deadlineCaptureClient struct {
+	hasDeadline bool
+	deadline    time.Time
+}
+
+func (c *deadlineCaptureClient) Do(req *http.Request) (*http.Response, error) {
+	c.deadline, c.hasDeadline = req.Context().Deadline()
+	return jsonResponse(map[string]interface{}{"ok": true}, http.StatusOK), nil
+}
+
 func TestMakeHTTPRequest_HeadersSet(t *testing.T) {
 	httpstub.InitStubConfig(false)
 	httpstub.ClearAllStubs()
@@ -430,6 +440,46 @@ func TestMakeHTTPRequest_HeadersSet(t *testing.T) {
 	if resp["ok"] != true {
 		t.Error("expected ok=true in response")
 	}
+}
+
+func TestMakeHTTPRequest_DefaultDeadline(t *testing.T) {
+	SetDefaultHTTPRequestTimeout(25 * time.Millisecond)
+	t.Cleanup(func() { SetDefaultHTTPRequestTimeout(DefaultHTTPRequestTimeout) })
+
+	httpstub.InitStubConfig(false)
+	httpstub.ClearAllStubs()
+
+	client := &deadlineCaptureClient{}
+	_, err := MakeHTTPRequest(context.Background(), client, RequestEntity{
+		Url:    "http://example.com",
+		Method: http.MethodGet,
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, client.hasDeadline)
+	assert.LessOrEqual(t, time.Until(client.deadline), 25*time.Millisecond)
+	assert.Equal(t, 25*time.Millisecond, GetDefaultHTTPRequestTimeout())
+}
+
+func TestSetDefaultHTTPRequestTimeout_InvalidResetsDefault(t *testing.T) {
+	SetDefaultHTTPRequestTimeout(-time.Second)
+	t.Cleanup(func() { SetDefaultHTTPRequestTimeout(DefaultHTTPRequestTimeout) })
+
+	assert.Equal(t, DefaultHTTPRequestTimeout, GetDefaultHTTPRequestTimeout())
+}
+
+func TestHTTPRequestContext_PreservesExistingDeadline(t *testing.T) {
+	parent, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	parentDeadline, ok := parent.Deadline()
+	assert.True(t, ok)
+
+	ctx, cancelRequest := httpRequestContext(parent, time.Millisecond)
+	defer cancelRequest()
+	gotDeadline, ok := ctx.Deadline()
+
+	assert.True(t, ok)
+	assert.Equal(t, parentDeadline, gotDeadline)
 }
 
 func TestMakeHTTPRequest_StubReadError(t *testing.T) {

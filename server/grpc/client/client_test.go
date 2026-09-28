@@ -190,6 +190,31 @@ func TestNewGRPCClient_FailedToDial(t *testing.T) {
 	assert.Contains(t, err.Error(), "health check failed")
 }
 
+func TestNewGRPCClient_DefaultMinConnectTimeout(t *testing.T) {
+	SetDefaultMinConnectTimeout(250 * time.Millisecond)
+	t.Cleanup(func() { SetDefaultMinConnectTimeout(DefaultMinConnectTimeout) })
+
+	opts := &ClientOptions{
+		Target:   "passthrough:///test",
+		Insecure: true,
+		Logger:   getLogger("TestNewGRPCClient_DefaultMinConnectTimeout"),
+	}
+
+	client, err := NewGRPCClient(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
+	assert.Equal(t, 250*time.Millisecond, opts.MinConnectTimeout)
+	assert.Equal(t, 250*time.Millisecond, GetDefaultMinConnectTimeout())
+	assert.NoError(t, client.Close())
+}
+
+func TestSetDefaultMinConnectTimeout_InvalidResetsDefault(t *testing.T) {
+	SetDefaultMinConnectTimeout(0)
+	t.Cleanup(func() { SetDefaultMinConnectTimeout(DefaultMinConnectTimeout) })
+
+	assert.Equal(t, DefaultMinConnectTimeout, GetDefaultMinConnectTimeout())
+}
+
 func TestNewGRPCClient_NewClientError(t *testing.T) {
 	orig := grpcNewClientFn
 	defer func() { grpcNewClientFn = orig }()
@@ -347,6 +372,36 @@ func TestHealthCheck_NotServing(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "service not healthy")
 	assert.NoError(t, client.Close())
+}
+
+func TestGRPCClient_HealthCheckContext(t *testing.T) {
+	client := &GRPCClient{opts: &ClientOptions{MinConnectTimeout: 25 * time.Millisecond}}
+
+	ctx, cancel := client.healthCheckContext(context.Background())
+	defer cancel()
+	deadline, ok := ctx.Deadline()
+	assert.True(t, ok)
+	assert.LessOrEqual(t, time.Until(deadline), 25*time.Millisecond)
+
+	parent, parentCancel := context.WithTimeout(context.Background(), time.Hour)
+	defer parentCancel()
+	parentDeadline, ok := parent.Deadline()
+	assert.True(t, ok)
+
+	ctx, cancel = client.healthCheckContext(parent)
+	defer cancel()
+	gotDeadline, ok := ctx.Deadline()
+	assert.True(t, ok)
+	assert.Equal(t, parentDeadline, gotDeadline)
+
+	SetDefaultMinConnectTimeout(30 * time.Millisecond)
+	t.Cleanup(func() { SetDefaultMinConnectTimeout(DefaultMinConnectTimeout) })
+
+	ctx, cancel = (&GRPCClient{}).healthCheckContext(context.Background())
+	defer cancel()
+	deadline, ok = ctx.Deadline()
+	assert.True(t, ok)
+	assert.LessOrEqual(t, time.Until(deadline), 30*time.Millisecond)
 }
 
 func writeTempFile(t *testing.T, content string) string {

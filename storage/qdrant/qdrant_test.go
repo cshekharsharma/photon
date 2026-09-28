@@ -482,7 +482,16 @@ func TestNewRequest_ErrorBranches(t *testing.T) {
 func TestIsRetryableNetErr_NetErrorInterface(t *testing.T) {
 	var ne net.Error = tempNetErr{timeout: true, temporary: false}
 	if !isRetryableNetErr(ne) {
+		t.Fatalf("expected retryable for timeout net error")
+	}
+
+	ne = tempNetErr{timeout: false, temporary: true}
+	if !isRetryableNetErr(ne) {
 		t.Fatalf("expected retryable for temporary net error")
+	}
+
+	if isRetryableNetErr(context.Canceled) {
+		t.Fatalf("expected context cancellation to be non-retryable")
 	}
 }
 
@@ -686,6 +695,55 @@ func TestIsRetryableNetErr_NonRetryableNetError(t *testing.T) {
 	var ne net.Error = tempNetErr{timeout: false, temporary: false}
 	if isRetryableNetErr(ne) {
 		t.Fatalf("expected non-retryable for net error without timeout/temporary")
+	}
+}
+
+func TestHandleRequestError_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	c := &restClient{retryMaxAttempts: 2}
+	retry, err := c.handleRequestError(ctx, 1, tempNetErr{timeout: true})
+
+	if retry {
+		t.Fatal("did not expect retry after context cancellation")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled, got %v", err)
+	}
+}
+
+func TestHandleRequestError_RequestCanceled(t *testing.T) {
+	c := &restClient{retryMaxAttempts: 2}
+	retry, err := c.handleRequestError(context.Background(), 1, context.Canceled)
+
+	if retry {
+		t.Fatal("did not expect retry for canceled request")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled, got %v", err)
+	}
+}
+
+func TestHandleRequestError_ContextCanceledDuringSleep(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		cancel()
+	}()
+
+	c := &restClient{
+		retryMaxAttempts: 2,
+		retryBaseDelay:   time.Second,
+		retryMaxDelay:    time.Second,
+	}
+	retry, err := c.handleRequestError(ctx, 1, tempNetErr{timeout: true})
+
+	if retry {
+		t.Fatal("did not expect retry after context cancellation")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled, got %v", err)
 	}
 }
 
