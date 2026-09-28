@@ -35,7 +35,7 @@ GOVULNCHECK_VERSION    := v1.8.0
 help:
 	@printf "\n${YELLOW}Makefile Targets:${NC}\n\n"
 	@printf "  ${GREEN}clean${NC}          - Clean the previous builds\n"
-	@printf "  ${GREEN}configure${NC}      - Configure the project (tidy, format, static-check)\n"
+	@printf "  ${GREEN}configure${NC}      - Configure the project and install local hooks\n"
 	@printf "  ${GREEN}tools${NC}          - Install pinned local development tools\n"
 	@printf "  ${GREEN}install-hooks${NC}  - Install local git hooks when .git exists\n"
 	@printf "  ${GREEN}install${NC}        - Alias for configure command\n"
@@ -55,7 +55,7 @@ tools:
 
 # Target: configure
 # Description: Configure the project by tidying and verifying the modules,
-# formatting the code, and running static analysis.
+# formatting the code, running static analysis, and installing local hooks.
 .PHONY: configure
 configure:
 	@printf "\n${YELLOW}CONFIGURING THE PACKAGE...${NC}\n\n"
@@ -65,6 +65,7 @@ configure:
 	$(GOIMPORT) -w .
 	$(GOFMT) -s -w .
 	$(STATICCHECK) ./...
+	@$(MAKE) install-hooks
 	@printf "\n✅ Project successfully configured.\n"
 
 # Target: install-hooks
@@ -82,8 +83,7 @@ install-hooks:
 	@printf "\n✅ Git hooks installed.\n"
 
 # Target: install
-# Description: Install the dependencies and configure the project (alias for configure),
-# formatting the code, and running static analysis.
+# Description: Install the dependencies and configure the project (alias for configure).
 .PHONY: install
 install: configure
 

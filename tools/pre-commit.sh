@@ -22,6 +22,11 @@ print_failure() {
 
 trap 'echo -e "\n💥 An unexpected error occurred. Aborting commit."; print_failure; exit 1' ERR
 
+GO_BIN="$(go env GOPATH)/bin"
+GOIMPORTS="${GOIMPORTS:-$GO_BIN/goimports}"
+STATICCHECK="${STATICCHECK:-$GO_BIN/staticcheck}"
+GOLANGCI_LINT="${GOLANGCI_LINT:-$GO_BIN/golangci-lint}"
+
 print_start
 
 echo -e "\033[1;36m>> Checking staged Go files for commit...\033[0m\n"
@@ -42,7 +47,7 @@ echo -e "\033[1;36m>> Running \"goimports\" check...\033[0m\n"
 fail_imports=()
 for file in $staged_files; do
   if [[ -f "$file" ]]; then
-    output=$(goimports -l "$file")
+    output=$("$GOIMPORTS" -l "$file")
     if [[ -n "$output" ]]; then
       fail_imports+=("$file")
     fi
@@ -77,7 +82,7 @@ staticcheck_failed=0
 
 if [[ ${#pkg_dirs[@]} -gt 0 ]]; then
   for dir in "${pkg_dirs[@]}"; do
-    if ! staticcheck "./$dir"; then
+    if ! "$STATICCHECK" "./$dir"; then
       echo -e "❌ staticcheck failed in $dir\n"
       staticcheck_failed=1
     else
@@ -93,18 +98,39 @@ if [[ $staticcheck_failed -ne 0 ]]; then
   exit 1
 fi
 
+echo -e "\n\033[1;36m>> Running \"golangci-lint\" per package...\033[0m\n"
+golangci_failed=0
+
+if [[ ${#pkg_dirs[@]} -gt 0 ]]; then
+  for dir in "${pkg_dirs[@]}"; do
+    if ! "$GOLANGCI_LINT" run "./$dir"; then
+      echo -e "❌ golangci-lint failed in $dir\n"
+      golangci_failed=1
+    else
+      echo -e "✅ golangci-lint passed in $dir"
+    fi
+  done
+else
+  echo -e "⚠️  No buildable Go packages found in staged files."
+fi
+
+if [[ $golangci_failed -ne 0 ]]; then
+  print_failure
+  exit 1
+fi
+
 echo -e "\n\033[1;36m>> Running \"go test\" on impacted packages...\033[0m\n"
 test_failed=0
 
 if [[ ${#pkg_dirs[@]} -gt 0 ]]; then
-for dir in "${pkg_dirs[@]}"; do
-  if ! go test "./$dir"; then
-    echo -e "❌ Tests failed in $dir"
-    test_failed=1
-  else
-    echo -e "✅ Tests passed in $dir"
-  fi
-done
+  for dir in "${pkg_dirs[@]}"; do
+    if ! go test "./$dir"; then
+      echo -e "❌ Tests failed in $dir"
+      test_failed=1
+    else
+      echo -e "✅ Tests passed in $dir"
+    fi
+  done
 else
   echo -e "⚠️  No buildable Go packages found in staged files."
 fi
