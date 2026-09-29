@@ -162,13 +162,13 @@ func TestAerospikeTTLRangeValidation(t *testing.T) {
 	}
 
 	cache, _ := getMockedAerospikeCache(t)
-	if _, err := cache.Set(&SetRequest{Key: "k", Fields: map[string]any{"a": 1}, TTL: int64(math.MaxUint32) + 1}); err == nil {
+	if _, err := cache.Set(context.Background(), &SetRequest{Key: "k", Fields: map[string]any{"a": 1}, TTL: int64(math.MaxUint32) + 1}); err == nil {
 		t.Fatalf("expected out-of-range Set TTL error")
 	}
-	if _, err := cache.MultiSet(&MultiSetRequest{FieldsMap: map[string]map[string]any{"k": {"a": 1}}, TTL: int64(math.MaxUint32) + 1}); err == nil {
+	if _, err := cache.MultiSet(context.Background(), &MultiSetRequest{FieldsMap: map[string]map[string]any{"k": {"a": 1}}, TTL: int64(math.MaxUint32) + 1}); err == nil {
 		t.Fatalf("expected out-of-range MultiSet TTL error")
 	}
-	if err := cache.SetTTL(&SetTTLRequest{Key: "k", TTL: int64(math.MaxUint32) + 1}); err == nil {
+	if err := cache.SetTTL(context.Background(), &SetTTLRequest{Key: "k", TTL: int64(math.MaxUint32) + 1}); err == nil {
 		t.Fatalf("expected out-of-range SetTTL error")
 	}
 }
@@ -182,31 +182,31 @@ func TestAerospikeKeyCreationErrors(t *testing.T) {
 		return nil, errors.New("bad key")
 	}
 
-	_, err := cache.Exists(&ExistsRequest{Key: "k"})
+	_, err := cache.Exists(context.Background(), &ExistsRequest{Key: "k"})
 	assert.Error(t, err)
 
-	_, err = cache.Get(&GetRequest{Key: "k"})
+	_, err = cache.Get(context.Background(), &GetRequest{Key: "k"})
 	assert.Error(t, err)
 
-	_, err = cache.Set(&SetRequest{Key: "k", Fields: map[string]any{"a": 1}})
+	_, err = cache.Set(context.Background(), &SetRequest{Key: "k", Fields: map[string]any{"a": 1}})
 	assert.Error(t, err)
 
-	_, err = cache.Delete(&DeleteRequest{Key: "k"})
+	_, err = cache.Delete(context.Background(), &DeleteRequest{Key: "k"})
 	assert.Error(t, err)
 
-	err = cache.Increment(&IncrementRequest{Key: "k", Fields: map[string]int64{"a": 1}})
+	err = cache.Increment(context.Background(), &IncrementRequest{Key: "k", Fields: map[string]int64{"a": 1}})
 	assert.Error(t, err)
 
-	err = cache.Decrement(&DecrementRequest{Key: "k", Fields: map[string]int64{"a": 1}})
+	err = cache.Decrement(context.Background(), &DecrementRequest{Key: "k", Fields: map[string]int64{"a": 1}})
 	assert.Error(t, err)
 
-	err = cache.Append(&AppendRequest{Key: "k", Fields: map[string]string{"a": "b"}})
+	err = cache.Append(context.Background(), &AppendRequest{Key: "k", Fields: map[string]string{"a": "b"}})
 	assert.Error(t, err)
 
-	_, err = cache.GetTTL(&GetTTLRequest{Key: "k"})
+	_, err = cache.GetTTL(context.Background(), &GetTTLRequest{Key: "k"})
 	assert.Error(t, err)
 
-	err = cache.SetTTL(&SetTTLRequest{Key: "k", TTL: 10})
+	err = cache.SetTTL(context.Background(), &SetTTLRequest{Key: "k", TTL: 10})
 	assert.Error(t, err)
 }
 
@@ -219,10 +219,10 @@ func TestAerospikeNewMultipleKeyErrors(t *testing.T) {
 		return nil, errors.New("bad keys")
 	}
 
-	_, err := cache.MultiGet(&MultiGetRequest{Keys: []string{"k1"}})
+	_, err := cache.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{"k1"}})
 	assert.Error(t, err)
 
-	_, err = cache.MultiDelete(&MultiDeleteRequest{Keys: []string{"k1"}})
+	_, err = cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{"k1"}})
 	assert.Error(t, err)
 }
 
@@ -238,48 +238,48 @@ func TestAerospikeContextMethodsCanceled(t *testing.T) {
 		run  func() error
 	}{
 		{"Exists", func() error {
-			_, err := cache.ExistsContext(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Exists(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Get", func() error {
-			_, err := cache.GetContext(ctx, &GetRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Get(ctx, &GetRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Set", func() error {
-			_, err := cache.SetContext(ctx, &SetRequest{cacheRequest: request, Key: "k", Fields: map[string]any{"f": "v"}})
+			_, err := cache.Set(ctx, &SetRequest{cacheRequest: request, Key: "k", Fields: map[string]any{"f": "v"}})
 			return err
 		}},
 		{"Delete", func() error {
-			_, err := cache.DeleteContext(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Delete(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"MultiGet", func() error {
-			_, err := cache.MultiGetContext(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiGet(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"MultiSet", func() error {
-			_, err := cache.MultiSetContext(ctx, &MultiSetRequest{cacheRequest: request, FieldsMap: map[string]map[string]any{"k": {"f": "v"}}})
+			_, err := cache.MultiSet(ctx, &MultiSetRequest{cacheRequest: request, FieldsMap: map[string]map[string]any{"k": {"f": "v"}}})
 			return err
 		}},
 		{"MultiDelete", func() error {
-			_, err := cache.MultiDeleteContext(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiDelete(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"Increment", func() error {
-			return cache.IncrementContext(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Fields: map[string]int64{"f": 1}})
+			return cache.Increment(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Fields: map[string]int64{"f": 1}})
 		}},
 		{"Decrement", func() error {
-			return cache.DecrementContext(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Fields: map[string]int64{"f": 1}})
+			return cache.Decrement(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Fields: map[string]int64{"f": 1}})
 		}},
 		{"Append", func() error {
-			return cache.AppendContext(ctx, &AppendRequest{cacheRequest: request, Key: "k", Fields: map[string]string{"f": "v"}})
+			return cache.Append(ctx, &AppendRequest{cacheRequest: request, Key: "k", Fields: map[string]string{"f": "v"}})
 		}},
 		{"GetTTL", func() error {
-			_, err := cache.GetTTLContext(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.GetTTL(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"SetTTL", func() error {
-			return cache.SetTTLContext(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
+			return cache.SetTTL(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
 		}},
 	}
 
@@ -329,7 +329,7 @@ func TestAerospikeMultiSet_KeyCreationError(t *testing.T) {
 		return aerov8.NewKey(namespace, setName, key)
 	}
 
-	_, err := cache.MultiSet(&MultiSetRequest{
+	_, err := cache.MultiSet(context.Background(), &MultiSetRequest{
 		FieldsMap: map[string]map[string]any{
 			"bad": {"a": 1},
 		},
@@ -343,7 +343,7 @@ func TestAerospikeExists_Success(t *testing.T) {
 	expectedKey, _ := aerospike.NewKey("test-ns", "test-collection", "test-key")
 	mockClient.On("Exists", mock.Anything, expectedKey).Return(true, nil)
 
-	exists, err := cache.Exists(&ExistsRequest{
+	exists, err := cache.Exists(context.Background(), &ExistsRequest{
 		Key: "test-key",
 	})
 
@@ -364,12 +364,12 @@ func TestAerospikeExists_Error(t *testing.T) {
 
 	mockClient.On("Exists", mock.Anything, expectedKey).Return(false, &aerov8.AerospikeError{})
 
-	exists, err := cache.Exists(&ExistsRequest{Key: "test-key"})
+	exists, err := cache.Exists(context.Background(), &ExistsRequest{Key: "test-key"})
 	assert.Error(t, err)
 	assert.False(t, exists)
 
 	cache.namespace = ""
-	_, err = cache.Exists(&ExistsRequest{})
+	_, err = cache.Exists(context.Background(), &ExistsRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -389,7 +389,7 @@ func TestAerospikeGet_Success(t *testing.T) {
 			Bins: expectedBins,
 		}, nil)
 
-	data, err := cache.Get(&GetRequest{
+	data, err := cache.Get(context.Background(), &GetRequest{
 		Key:    "test-key",
 		Fields: nil, // all fields
 	})
@@ -416,12 +416,12 @@ func TestAerospikeGet_Error(t *testing.T) {
 
 	mockClient.On("Get", mock.Anything, expectedKey, mock.Anything).Return(&aerov8.Record{}, &aerov8.AerospikeError{})
 
-	data, err := cache.Get(&GetRequest{Key: "test-key"})
+	data, err := cache.Get(context.Background(), &GetRequest{Key: "test-key"})
 	assert.Error(t, err)
 	assert.Nil(t, data)
 
 	cache.namespace = ""
-	_, err = cache.Get(&GetRequest{})
+	_, err = cache.Get(context.Background(), &GetRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -438,7 +438,7 @@ func TestAerospikeSet_Success(t *testing.T) {
 
 	mockClient.On("Put", mock.Anything, expectedKey, mock.Anything).Return(nil)
 
-	found, err := cache.Set(&SetRequest{
+	found, err := cache.Set(context.Background(), &SetRequest{
 		Key:    "test-key",
 		Fields: bins,
 		TTL:    60,
@@ -462,7 +462,7 @@ func TestAerospikeSet_Error(t *testing.T) {
 
 	mockClient.On("Put", mock.Anything, expectedKey, mock.Anything).Return(&aerov8.AerospikeError{})
 
-	found, err := cache.Set(&SetRequest{
+	found, err := cache.Set(context.Background(), &SetRequest{
 		Key:    "test-key",
 		Fields: map[string]interface{}{"field1": "value1"},
 		TTL:    60,
@@ -477,7 +477,7 @@ func TestAerospikeSet_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	_, err = cache.Set(&SetRequest{})
+	_, err = cache.Set(context.Background(), &SetRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -490,7 +490,7 @@ func TestAerospikeDelete_Success(t *testing.T) {
 
 	mockClient.On("Delete", mock.Anything, expectedKey).Return(true, nil)
 
-	deleted, err := cache.Delete(&DeleteRequest{Key: "test-key"})
+	deleted, err := cache.Delete(context.Background(), &DeleteRequest{Key: "test-key"})
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -510,7 +510,7 @@ func TestAerospikeDelete_Error(t *testing.T) {
 
 	mockClient.On("Delete", mock.Anything, expectedKey).Return(false, &aerov8.AerospikeError{})
 
-	deleted, err := cache.Delete(&DeleteRequest{Key: "test-key"})
+	deleted, err := cache.Delete(context.Background(), &DeleteRequest{Key: "test-key"})
 
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
@@ -521,7 +521,7 @@ func TestAerospikeDelete_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	_, err = cache.Delete(&DeleteRequest{})
+	_, err = cache.Delete(context.Background(), &DeleteRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -544,7 +544,7 @@ func TestAerospikeMultiGet_Success(t *testing.T) {
 
 	mockClient.On("BatchGet", mock.Anything, aeroKeys, mock.Anything).Return(records, nil)
 
-	data, err := cache.MultiGet(&MultiGetRequest{Keys: keys})
+	data, err := cache.MultiGet(context.Background(), &MultiGetRequest{Keys: keys})
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -569,7 +569,7 @@ func TestAerospikeMultiGet_Error(t *testing.T) {
 
 	mockClient.On("BatchGet", mock.Anything, aeroKeys, mock.Anything).Return([]*aerov8.Record{}, &aerov8.AerospikeError{})
 
-	data, err := cache.MultiGet(&MultiGetRequest{Keys: keys})
+	data, err := cache.MultiGet(context.Background(), &MultiGetRequest{Keys: keys})
 
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
@@ -580,7 +580,7 @@ func TestAerospikeMultiGet_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	_, err = cache.MultiGet(&MultiGetRequest{})
+	_, err = cache.MultiGet(context.Background(), &MultiGetRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -596,7 +596,7 @@ func TestAerospikeMultiSet_Success(t *testing.T) {
 
 	mockClient.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
-	_, err := cache.MultiSet(&MultiSetRequest{FieldsMap: items, TTL: 60})
+	_, err := cache.MultiSet(context.Background(), &MultiSetRequest{FieldsMap: items, TTL: 60})
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -615,14 +615,14 @@ func TestAerospikeMultiSet_Error(t *testing.T) {
 
 	mockClient.On("Put", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&aerov8.AerospikeError{})
 
-	_, err := cache.MultiSet(&MultiSetRequest{FieldsMap: items, TTL: 60})
+	_, err := cache.MultiSet(context.Background(), &MultiSetRequest{FieldsMap: items, TTL: 60})
 
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
 	}
 
 	cache.namespace = ""
-	_, err = cache.MultiSet(&MultiSetRequest{})
+	_, err = cache.MultiSet(context.Background(), &MultiSetRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -638,7 +638,7 @@ func TestAerospikeMultiDelete_Success(t *testing.T) {
 		{ResultCode: aero8type.OK},
 	}, nil)
 
-	results, err := cache.MultiDelete(&MultiDeleteRequest{Keys: keys})
+	results, err := cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: keys})
 
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -649,7 +649,7 @@ func TestAerospikeMultiDelete_Success(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	_, err = cache.MultiDelete(&MultiDeleteRequest{})
+	_, err = cache.MultiDelete(context.Background(), &MultiDeleteRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -662,7 +662,7 @@ func TestAerospikeMultiDelete_Error(t *testing.T) {
 
 	mockClient.On("BatchDelete", mock.Anything, mock.Anything, mock.Anything).Return([]*aerov8.BatchRecord{}, &aerov8.AerospikeError{})
 
-	results, err := cache.MultiDelete(&MultiDeleteRequest{Keys: keys})
+	results, err := cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: keys})
 
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
@@ -685,7 +685,7 @@ func TestAerospikeIncrement_Success(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, nil)
 
-	err := cache.Increment(&IncrementRequest{
+	err := cache.Increment(context.Background(), &IncrementRequest{
 		Key:    "test-key",
 		Fields: map[string]int64{"counter": int64(10)},
 	})
@@ -707,7 +707,7 @@ func TestAerospikeIncrement_Error(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, &aerov8.AerospikeError{})
 
-	err := cache.Increment(&IncrementRequest{
+	err := cache.Increment(context.Background(), &IncrementRequest{
 		Key:    "test-key",
 		Fields: map[string]int64{"counter": int64(10)},
 	})
@@ -717,7 +717,7 @@ func TestAerospikeIncrement_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	err = cache.Increment(&IncrementRequest{})
+	err = cache.Increment(context.Background(), &IncrementRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -733,7 +733,7 @@ func TestAerospikeDecrement_Success(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, nil)
 
-	err := cache.Decrement(&DecrementRequest{
+	err := cache.Decrement(context.Background(), &DecrementRequest{
 		Key:    "test-key",
 		Fields: map[string]int64{"counter": -1 * int64(1)},
 	})
@@ -755,7 +755,7 @@ func TestAerospikeDecrement_Error(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, &aerov8.AerospikeError{})
 
-	err := cache.Decrement(&DecrementRequest{
+	err := cache.Decrement(context.Background(), &DecrementRequest{
 		Key:    "test-key",
 		Fields: map[string]int64{"counter": -1 * int64(10)},
 	})
@@ -765,7 +765,7 @@ func TestAerospikeDecrement_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	err = cache.Decrement(&DecrementRequest{})
+	err = cache.Decrement(context.Background(), &DecrementRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -781,7 +781,7 @@ func TestAerospikeAppend_Success(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, nil)
 
-	err := cache.Append(&AppendRequest{
+	err := cache.Append(context.Background(), &AppendRequest{
 		Key:    "test-key",
 		Fields: map[string]string{"myfield": "vv"},
 	})
@@ -803,7 +803,7 @@ func TestAerospikeAppend_Error(t *testing.T) {
 
 	mockClient.On("Operate", mock.Anything, expectedKey, ops).Return(&aerov8.Record{}, &aerov8.AerospikeError{})
 
-	err := cache.Append(&AppendRequest{
+	err := cache.Append(context.Background(), &AppendRequest{
 		Key:    "test-key",
 		Fields: map[string]string{"myfield": "vv"},
 	})
@@ -813,7 +813,7 @@ func TestAerospikeAppend_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	err = cache.Append(&AppendRequest{})
+	err = cache.Append(context.Background(), &AppendRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -829,7 +829,7 @@ func TestAerospikeGetTTL_Success(t *testing.T) {
 
 	mockClient.On("GetHeader", mock.Anything, expectedKey).Return(mockRecord, nil)
 
-	ttl, err := cache.GetTTL(&GetTTLRequest{
+	ttl, err := cache.GetTTL(context.Background(), &GetTTLRequest{
 		Key: "test-key",
 	})
 
@@ -851,7 +851,7 @@ func TestAerospikeGetTTL_Error(t *testing.T) {
 
 	mockClient.On("GetHeader", mock.Anything, expectedKey).Return(&aerov8.Record{}, &aerov8.AerospikeError{})
 
-	ttl, err := cache.GetTTL(&GetTTLRequest{
+	ttl, err := cache.GetTTL(context.Background(), &GetTTLRequest{
 		Key: "test-key",
 	})
 
@@ -864,7 +864,7 @@ func TestAerospikeGetTTL_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	_, err = cache.GetTTL(&GetTTLRequest{})
+	_, err = cache.GetTTL(context.Background(), &GetTTLRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)
@@ -877,7 +877,7 @@ func TestAerospikeSetTTL_Success(t *testing.T) {
 
 	mockClient.On("Touch", mock.Anything, expectedKey).Return(nil)
 
-	err := cache.SetTTL(&SetTTLRequest{
+	err := cache.SetTTL(context.Background(), &SetTTLRequest{
 		Key: "test-key",
 		TTL: 3600,
 	})
@@ -896,7 +896,7 @@ func TestAerospikeSetTTL_Error(t *testing.T) {
 
 	mockClient.On("Touch", mock.Anything, expectedKey).Return(&aerov8.AerospikeError{})
 
-	err := cache.SetTTL(&SetTTLRequest{
+	err := cache.SetTTL(context.Background(), &SetTTLRequest{
 		Key: "test-key",
 		TTL: 3600,
 	})
@@ -906,7 +906,7 @@ func TestAerospikeSetTTL_Error(t *testing.T) {
 	}
 
 	cache.namespace = ""
-	err = cache.SetTTL(&SetTTLRequest{})
+	err = cache.SetTTL(context.Background(), &SetTTLRequest{})
 	assert.NotNil(t, err)
 
 	mockClient.AssertExpectations(t)

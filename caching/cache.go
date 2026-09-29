@@ -20,7 +20,7 @@ type Cache interface {
 	// Returns:
 	//   - bool: True if the key exists, false otherwise.
 	//   - error: Any error encountered during the operation.
-	Exists(request *ExistsRequest) (bool, error)
+	Exists(ctx context.Context, request *ExistsRequest) (bool, error)
 
 	// Get retrieves the value for a specific key.
 	//
@@ -30,7 +30,7 @@ type Cache interface {
 	// Returns:
 	//   - any: Retrieved value (often map[string]interface{} in systems like Aerospike).
 	//   - error: If the key is not found or operation fails.
-	Get(request *GetRequest) (any, error)
+	Get(ctx context.Context, request *GetRequest) (any, error)
 
 	// Set stores or updates a key-value pair in the cache with optional TTL.
 	//
@@ -40,7 +40,7 @@ type Cache interface {
 	// Returns:
 	//   - bool: True if the operation was successful.
 	//   - error: If the operation fails.
-	Set(request *SetRequest) (bool, error)
+	Set(ctx context.Context, request *SetRequest) (bool, error)
 
 	// Delete removes a key from the cache.
 	//
@@ -50,7 +50,7 @@ type Cache interface {
 	// Returns:
 	//   - bool: True if the key was deleted, false if not found.
 	//   - error: If deletion fails.
-	Delete(request *DeleteRequest) (bool, error)
+	Delete(ctx context.Context, request *DeleteRequest) (bool, error)
 
 	// MultiGet fetches multiple values for a list of keys.
 	//
@@ -60,7 +60,7 @@ type Cache interface {
 	// Returns:
 	//   - map[string]any: A map of keys to their corresponding values.
 	//   - error: If the batch fetch fails.
-	MultiGet(request *MultiGetRequest) (map[string]any, error)
+	MultiGet(ctx context.Context, request *MultiGetRequest) (map[string]any, error)
 
 	// MultiSet sets multiple key-value pairs in one batch call.
 	//
@@ -70,7 +70,7 @@ type Cache interface {
 	// Returns:
 	//   - map[string]bool: A map indicating which keys were set successfully.
 	//   - error: If the batch set operation fails.
-	MultiSet(request *MultiSetRequest) (map[string]bool, error)
+	MultiSet(ctx context.Context, request *MultiSetRequest) (map[string]bool, error)
 
 	// MultiDelete deletes multiple keys from the cache.
 	//
@@ -80,7 +80,7 @@ type Cache interface {
 	// Returns:
 	//   - map[string]bool: A map of keys to a boolean indicating deletion success.
 	//   - error: If the operation encounters an error.
-	MultiDelete(request *MultiDeleteRequest) (map[string]bool, error)
+	MultiDelete(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error)
 
 	// Increment increases integer values of specified fields by given offsets.
 	//
@@ -89,7 +89,7 @@ type Cache interface {
 	//
 	// Returns:
 	//   - error: If incrementing fails or is applied to non-numeric values.
-	Increment(request *IncrementRequest) error
+	Increment(ctx context.Context, request *IncrementRequest) error
 
 	// Decrement decreases integer values of specified fields by given offsets.
 	//
@@ -98,7 +98,7 @@ type Cache interface {
 	//
 	// Returns:
 	//   - error: If decrementing fails or is applied to non-numeric values.
-	Decrement(request *DecrementRequest) error
+	Decrement(ctx context.Context, request *DecrementRequest) error
 
 	// Append appends string values to the specified fields of a key.
 	//
@@ -107,7 +107,7 @@ type Cache interface {
 	//
 	// Returns:
 	//   - error: If the append operation fails.
-	Append(request *AppendRequest) error
+	Append(ctx context.Context, request *AppendRequest) error
 
 	// GetTTL retrieves the remaining TTL for a specific key.
 	//
@@ -117,7 +117,7 @@ type Cache interface {
 	// Returns:
 	//   - int64: TTL in seconds.
 	//   - error: If fetching TTL fails.
-	GetTTL(request *GetTTLRequest) (int64, error)
+	GetTTL(ctx context.Context, request *GetTTLRequest) (int64, error)
 
 	// SetTTL updates the TTL of a given key.
 	//
@@ -126,24 +126,5 @@ type Cache interface {
 	//
 	// Returns:
 	//   - error: If updating the TTL fails.
-	SetTTL(request *SetTTLRequest) error
-}
-
-// ContextCache is the context-aware form of Cache. Implementations should use
-// the supplied context for backend calls whenever the backend supports it.
-type ContextCache interface {
-	Cache
-
-	ExistsContext(ctx context.Context, request *ExistsRequest) (bool, error)
-	GetContext(ctx context.Context, request *GetRequest) (any, error)
-	SetContext(ctx context.Context, request *SetRequest) (bool, error)
-	DeleteContext(ctx context.Context, request *DeleteRequest) (bool, error)
-	MultiGetContext(ctx context.Context, request *MultiGetRequest) (map[string]any, error)
-	MultiSetContext(ctx context.Context, request *MultiSetRequest) (map[string]bool, error)
-	MultiDeleteContext(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error)
-	IncrementContext(ctx context.Context, request *IncrementRequest) error
-	DecrementContext(ctx context.Context, request *DecrementRequest) error
-	AppendContext(ctx context.Context, request *AppendRequest) error
-	GetTTLContext(ctx context.Context, request *GetTTLRequest) (int64, error)
-	SetTTLContext(ctx context.Context, request *SetTTLRequest) error
+	SetTTL(ctx context.Context, request *SetTTLRequest) error
 }

@@ -40,7 +40,7 @@ func newZerolog(config *LoggerConfig) (*zerolog, error) {
 	})
 
 	if config.Type&LoggerTypeStdout != 0 {
-		leaves = append(leaves, configureConsoleLoggerWithFormat(config.Writer, config.TimeFormat))
+		leaves = append(leaves, configureConsoleLogger(config.Writer, config.TimeFormat))
 	}
 
 	if config.Type&LoggerTypeFile != 0 {
@@ -70,18 +70,14 @@ func newZerolog(config *LoggerConfig) (*zerolog, error) {
 }
 
 // configureConsoleLogger configures a zerolog console writer with standard settings.
-func configureConsoleLogger(ww io.Writer) io.Writer {
-	return configureConsoleLoggerWithFormat(ww, "")
-}
-
-func configureConsoleLoggerWithFormat(ww io.Writer, timeFormat string) io.Writer {
+func configureConsoleLogger(ww io.Writer, timeFormats ...string) io.Writer {
 	writer := zerologLib.NewConsoleWriter()
 	writer.TimeFormat = time.DateTime
 	writer.Out = os.Stderr
 	writer.NoColor = false
 
-	if timeFormat != "" {
-		writer.TimeFormat = timeFormat
+	if len(timeFormats) > 0 && timeFormats[0] != "" {
+		writer.TimeFormat = timeFormats[0]
 	}
 	if ww != nil {
 		writer.Out = ww

@@ -52,17 +52,13 @@ type ReadQueryInput struct {
 // NOTE: We do NOT prepare implicitly here. Preparing without using the prepared statement
 // is wasteful and can break assumptions under PgBouncer. If you want explicit prepare,
 // do it at the call site (or add an optional flag and execute via stmt).
-func ExecuteReadQuery(dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]any, error) {
-	return ExecuteReadQueryContext(context.Background(), dbctx, queryInput)
-}
-
-func ExecuteReadQueryContext(ctx context.Context, dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]any, error) {
+func ExecuteReadQuery(ctx context.Context, dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]any, error) {
 	if dbctx == nil {
 		return nil, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
 
 	// TODO(otel): span "postgres.helper.read" (queryInput.Query sanitized), args count, cluster, etc.
-	rows, err := dbctx.QueryContext(ctx, queryInput.Query, queryInput.Params...)
+	rows, err := dbctx.Query(ctx, queryInput.Query, queryInput.Params...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,17 +121,13 @@ func normalizePgValue(v any) any {
 // ExecuteWriteQuery executes an INSERT/UPDATE/DELETE query.
 // Note: Postgres generally does NOT support LastInsertId().
 // Prefer `RETURNING id` and QueryRow/Scan for inserts that need IDs.
-func ExecuteWriteQuery(dbctx *DBContext, query string, params []any) (int64, int64, error) {
-	return ExecuteWriteQueryContext(context.Background(), dbctx, query, params)
-}
-
-func ExecuteWriteQueryContext(ctx context.Context, dbctx *DBContext, query string, params []any) (int64, int64, error) {
+func ExecuteWriteQuery(ctx context.Context, dbctx *DBContext, query string, params []any) (int64, int64, error) {
 	if dbctx == nil {
 		return 0, 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
 
 	// TODO(otel): span "postgres.helper.write"
-	result, err := dbctx.ExecContext(ctx, query, params...)
+	result, err := dbctx.Exec(ctx, query, params...)
 	if err != nil {
 		return 0, 0, fmt.Errorf("error executing query: %w", err)
 	}
@@ -155,11 +147,7 @@ func ExecuteWriteQueryContext(ctx context.Context, dbctx *DBContext, query strin
 
 // MultiInsertFromStructsArray performs a bulk insert using a slice of structs,
 // generating Postgres placeholders ($1..$N).
-func MultiInsertFromStructsArray[T any](dbctx *DBContext, tableName string, data []T) (int64, error) {
-	return MultiInsertFromStructsArrayContext(context.Background(), dbctx, tableName, data)
-}
-
-func MultiInsertFromStructsArrayContext[T any](ctx context.Context, dbctx *DBContext, tableName string, data []T) (int64, error) {
+func MultiInsertFromStructsArray[T any](ctx context.Context, dbctx *DBContext, tableName string, data []T) (int64, error) {
 	if len(data) == 0 {
 		return 0, fmt.Errorf("input data array is empty")
 	}
@@ -173,7 +161,7 @@ func MultiInsertFromStructsArrayContext[T any](ctx context.Context, dbctx *DBCon
 	}
 
 	// TODO(otel): span "postgres.helper.multi_insert"
-	result, err := dbctx.ExecContext(ctx, query, allValues...)
+	result, err := dbctx.Exec(ctx, query, allValues...)
 	if err != nil {
 		return 0, fmt.Errorf("error executing insert: %w", err)
 	}
@@ -346,11 +334,7 @@ func multiInsertPlaceholders(fields []string, fieldValues map[string]any, fieldI
 
 // InsertFromStruct inserts one record into a table based on struct db tags.
 // Uses Postgres placeholders ($1..$N).
-func InsertFromStruct(dbctx *DBContext, tableName string, data any) (int64, int64, error) {
-	return InsertFromStructContext(context.Background(), dbctx, tableName, data)
-}
-
-func InsertFromStructContext(ctx context.Context, dbctx *DBContext, tableName string, data any) (int64, int64, error) {
+func InsertFromStruct(ctx context.Context, dbctx *DBContext, tableName string, data any) (int64, int64, error) {
 	if dbctx == nil {
 		return 0, 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -419,7 +403,7 @@ func InsertFromStructContext(ctx context.Context, dbctx *DBContext, tableName st
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tbl, strings.Join(cols, ", "), strings.Join(phs, ", "))
 
 	// TODO(otel): span "postgres.helper.insert_struct"
-	res, execErr := dbctx.ExecContext(ctx, query, vals...)
+	res, execErr := dbctx.Exec(ctx, query, vals...)
 	if execErr != nil {
 		return 0, 0, execErr
 	}
@@ -434,11 +418,7 @@ func InsertFromStructContext(ctx context.Context, dbctx *DBContext, tableName st
 
 // InsertFromMap inserts a record using map[column]value.
 // Uses Postgres placeholders ($1..$N).
-func InsertFromMap(dbctx *DBContext, tableName string, data map[string]any) (int64, int64, error) {
-	return InsertFromMapContext(context.Background(), dbctx, tableName, data)
-}
-
-func InsertFromMapContext(ctx context.Context, dbctx *DBContext, tableName string, data map[string]any) (int64, int64, error) {
+func InsertFromMap(ctx context.Context, dbctx *DBContext, tableName string, data map[string]any) (int64, int64, error) {
 	if dbctx == nil {
 		return 0, 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -474,7 +454,7 @@ func InsertFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tbl, strings.Join(cols, ", "), strings.Join(phs, ", "))
 
 	// TODO(otel): span "postgres.helper.insert_map"
-	res, err := dbctx.ExecContext(ctx, query, vals...)
+	res, err := dbctx.Exec(ctx, query, vals...)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -491,11 +471,7 @@ func InsertFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 // whereClause may contain either:
 // - Postgres placeholders ($N), OR
 // - '?' placeholders (which will be converted to $N starting at the correct position)
-func UpdateFromMap(dbctx *DBContext, tableName string, data map[string]any, whereClause string, params ...any) (int64, error) {
-	return UpdateFromMapContext(context.Background(), dbctx, tableName, data, whereClause, params...)
-}
-
-func UpdateFromMapContext(ctx context.Context, dbctx *DBContext, tableName string, data map[string]any, whereClause string, params ...any) (int64, error) {
+func UpdateFromMap(ctx context.Context, dbctx *DBContext, tableName string, data map[string]any, whereClause string, params ...any) (int64, error) {
 	if dbctx == nil {
 		return 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -537,7 +513,7 @@ func UpdateFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tbl, strings.Join(setParts, ", "), convertedWhere)
 
 	// TODO(otel): span "postgres.helper.update_map"
-	res, err := dbctx.ExecContext(ctx, query, values...)
+	res, err := dbctx.Exec(ctx, query, values...)
 	if err != nil {
 		return 0, err
 	}
@@ -546,11 +522,7 @@ func UpdateFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 	return rowsAffected, nil
 }
 
-func DeleteByPrimaryKey(dbctx *DBContext, tableName, pkColumn string, pkValue any) (int64, error) {
-	return DeleteByPrimaryKeyContext(context.Background(), dbctx, tableName, pkColumn, pkValue)
-}
-
-func DeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName, pkColumn string, pkValue any) (int64, error) {
+func DeleteByPrimaryKey(ctx context.Context, dbctx *DBContext, tableName, pkColumn string, pkValue any) (int64, error) {
 	if dbctx == nil {
 		return 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -567,7 +539,7 @@ func DeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName,
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tbl, pk)
 
 	// TODO(otel): span "postgres.helper.delete_pk"
-	res, err := dbctx.ExecContext(ctx, query, pkValue)
+	res, err := dbctx.Exec(ctx, query, pkValue)
 	if err != nil {
 		return 0, err
 	}
@@ -576,11 +548,7 @@ func DeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName,
 	return rowsAffected, nil
 }
 
-func SoftDeleteByPrimaryKey(dbctx *DBContext, tableName, deleteCol, pkCol string, value any) (int64, error) {
-	return SoftDeleteByPrimaryKeyContext(context.Background(), dbctx, tableName, deleteCol, pkCol, value)
-}
-
-func SoftDeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName, deleteCol, pkCol string, value any) (int64, error) {
+func SoftDeleteByPrimaryKey(ctx context.Context, dbctx *DBContext, tableName, deleteCol, pkCol string, value any) (int64, error) {
 	if dbctx == nil {
 		return 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -602,7 +570,7 @@ func SoftDeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableN
 	query := fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s = $2", tbl, del, pk)
 
 	// TODO(otel): span "postgres.helper.soft_delete"
-	res, err := dbctx.ExecContext(ctx, query, true, value)
+	res, err := dbctx.Exec(ctx, query, true, value)
 	if err != nil {
 		return 0, err
 	}

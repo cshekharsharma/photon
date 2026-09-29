@@ -69,12 +69,13 @@ func New(opts Options) (*Store, error) {
 		opts.LFUAgingEvery = 200_000
 	}
 
-	lfu, err := stdlib.NewTinyLFU(
-		opts.LFUDepth,
-		opts.LFUWidth,
-		opts.LFUAgingEvery,
-		stdlib.Hash64String,
-	)
+	lfu, err := stdlib.NewTinyLFU(stdlib.TinyLFUOptions[string]{
+		Depth:        opts.LFUDepth,
+		Width:        opts.LFUWidth,
+		AgingEvery:   opts.LFUAgingEvery,
+		AdmitOnEqual: true,
+		Hash:         stdlib.Hash64String,
+	})
 
 	if err != nil {
 		return nil, err

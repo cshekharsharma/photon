@@ -30,7 +30,7 @@ func TestCloseSQLCloser_IgnoresCloseError(t *testing.T) {
 
 func TestExecuteReadQuery(t *testing.T) {
 	t.Run("NilContextShouldFail", func(t *testing.T) {
-		res, err := ExecuteReadQuery(nil, ReadQueryInput{})
+		res, err := ExecuteReadQuery(context.Background(), nil, ReadQueryInput{})
 		assert.Nil(t, res)
 		assert.ErrorContains(t, err, "nil DB context")
 	})
@@ -42,7 +42,7 @@ func TestExecuteReadQuery(t *testing.T) {
 			},
 		}
 
-		res, err := ExecuteReadQuery(ctx, ReadQueryInput{Query: "BAD SQL"})
+		res, err := ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "BAD SQL"})
 		assert.Nil(t, res)
 		assert.ErrorContains(t, err, "query error")
 	})
@@ -53,7 +53,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 	params := []interface{}{"value1"}
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, _, err := ExecuteWriteQuery(nil, query, params)
+		_, _, err := ExecuteWriteQuery(context.Background(), nil, query, params)
 		assert.Error(t, err)
 	})
 
@@ -77,7 +77,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 
 		SetConnectionConfig("success-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, id, err := ExecuteWriteQuery(&DBContext{Cluster: "success-cluster"}, query, params)
+		rows, id, err := ExecuteWriteQuery(context.Background(), &DBContext{Cluster: "success-cluster"}, query, params)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 		assert.Equal(t, int64(10), id)
@@ -98,7 +98,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 
 		SetConnectionConfig("fail-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, id, err := ExecuteWriteQuery(&DBContext{Cluster: "fail-cluster"}, query, params)
+		rows, id, err := ExecuteWriteQuery(context.Background(), &DBContext{Cluster: "fail-cluster"}, query, params)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "db connection error")
 		assert.Equal(t, int64(0), rows)
@@ -124,7 +124,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 
 		SetConnectionConfig("exec-fail", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, id, err := ExecuteWriteQuery(&DBContext{Cluster: "exec-fail"}, query, params)
+		rows, id, err := ExecuteWriteQuery(context.Background(), &DBContext{Cluster: "exec-fail"}, query, params)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "exec failure")
 		assert.Equal(t, int64(0), rows)
@@ -151,7 +151,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 
 		SetConnectionConfig("lastid-fail", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, id, err := ExecuteWriteQuery(&DBContext{Cluster: "lastid-fail"}, query, params)
+		rows, id, err := ExecuteWriteQuery(context.Background(), &DBContext{Cluster: "lastid-fail"}, query, params)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(2), rows)
 		assert.Equal(t, int64(0), id)
@@ -177,7 +177,7 @@ func TestExecuteWriteQuery(t *testing.T) {
 
 		SetConnectionConfig("rowsfail-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, id, err := ExecuteWriteQuery(&DBContext{Cluster: "rowsfail-cluster"}, query, params)
+		rows, id, err := ExecuteWriteQuery(context.Background(), &DBContext{Cluster: "rowsfail-cluster"}, query, params)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "rows error")
 		assert.Equal(t, int64(0), rows)
@@ -198,7 +198,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 	}
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, err := MultiInsertFromStructsArray(nil, "test_users", successUsers)
+		_, err := MultiInsertFromStructsArray(context.Background(), nil, "test_users", successUsers)
 		assert.Error(t, err)
 	})
 
@@ -225,7 +225,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 
 		SetConnectionConfig("test-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "test-cluster"}, "test_users", successUsers)
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_users", successUsers)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(2), rows)
 
@@ -234,7 +234,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 	})
 
 	t.Run("EmptyInputData", func(t *testing.T) {
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "test-cluster"}, "test_users", []User{})
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_users", []User{})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "input data array is empty")
 		assert.Equal(t, int64(0), rows)
@@ -252,7 +252,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 
 		SetConnectionConfig("fail-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "fail-cluster"}, "test_users", successUsers)
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "fail-cluster"}, "test_users", successUsers)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "connection failed")
 		assert.Equal(t, int64(0), rows)
@@ -277,7 +277,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 
 		SetConnectionConfig("badquery-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "badquery-cluster"}, "test_users", invalid)
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "badquery-cluster"}, "test_users", invalid)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no insertable fields")
@@ -300,7 +300,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 
 		SetConnectionConfig("execfail-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "execfail-cluster"}, "test_users", successUsers)
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "execfail-cluster"}, "test_users", successUsers)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error executing insert")
 		assert.Equal(t, int64(0), rows)
@@ -325,7 +325,7 @@ func TestMultiInsertFromStructsArray(t *testing.T) {
 
 		SetConnectionConfig("rowfail-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-		rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "rowfail-cluster"}, "test_users", successUsers)
+		rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "rowfail-cluster"}, "test_users", successUsers)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error fetching impacted rows")
 		assert.Equal(t, int64(0), rows)
@@ -460,25 +460,25 @@ func TestMySQLHelpersRejectUnsafeIdentifiersBeforeExecution(t *testing.T) {
 		},
 	}
 
-	_, _, err := InsertFromMap(dbctx, "users; DROP TABLE users", map[string]interface{}{"name": "Alice"})
+	_, _, err := InsertFromMap(context.Background(), dbctx, "users; DROP TABLE users", map[string]interface{}{"name": "Alice"})
 	assert.Error(t, err)
 
-	_, _, err = InsertFromMap(dbctx, "users", map[string]interface{}{"name desc": "Alice"})
+	_, _, err = InsertFromMap(context.Background(), dbctx, "users", map[string]interface{}{"name desc": "Alice"})
 	assert.Error(t, err)
 
-	_, err = UpdateFromMap(dbctx, "users", map[string]interface{}{"bad`name": "Alice"}, "id = ?", 1)
+	_, err = UpdateFromMap(context.Background(), dbctx, "users", map[string]interface{}{"bad`name": "Alice"}, "id = ?", 1)
 	assert.Error(t, err)
 
-	_, err = DeleteByPrimaryKey(dbctx, "users/*x*/", "id", 1)
+	_, err = DeleteByPrimaryKey(context.Background(), dbctx, "users/*x*/", "id", 1)
 	assert.Error(t, err)
 
-	_, err = SoftDeleteByPrimaryKey(dbctx, "users", "deleted;DROP", "id", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), dbctx, "users", "deleted;DROP", "id", 1)
 	assert.Error(t, err)
 
 	type BadTag struct {
 		Name string `db:"name desc"`
 	}
-	_, _, err = InsertFromStruct(dbctx, "users", BadTag{Name: "Alice"})
+	_, _, err = InsertFromStruct(context.Background(), dbctx, "users", BadTag{Name: "Alice"})
 	assert.Error(t, err)
 
 	_, _, err = generateMultiInsertQueriesFromStructArray("users", []BadTag{{Name: "Alice"}})
@@ -490,13 +490,13 @@ func TestMySQLHelpersRejectUnsafeIdentifiersBeforeExecution(t *testing.T) {
 	_, _, err = generateMultiInsertQueriesFromStructArray("users; DROP TABLE users", []GoodTag{{Name: "Alice"}})
 	assert.Error(t, err)
 
-	_, _, err = InsertFromStruct(dbctx, "users; DROP TABLE users", GoodTag{Name: "Alice"})
+	_, _, err = InsertFromStruct(context.Background(), dbctx, "users; DROP TABLE users", GoodTag{Name: "Alice"})
 	assert.Error(t, err)
 
-	_, err = UpdateFromMap(dbctx, "users; DROP TABLE users", map[string]interface{}{"name": "Alice"}, "id = ?", 1)
+	_, err = UpdateFromMap(context.Background(), dbctx, "users; DROP TABLE users", map[string]interface{}{"name": "Alice"}, "id = ?", 1)
 	assert.Error(t, err)
 
-	_, err = SoftDeleteByPrimaryKey(dbctx, "users; DROP TABLE users", "deleted", "id", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), dbctx, "users; DROP TABLE users", "deleted", "id", 1)
 	assert.Error(t, err)
 }
 
@@ -532,14 +532,14 @@ func TestMySQLHelpersRejectInvalidStructShapes(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "expected struct type")
 
-	_, _, err = InsertFromStruct(&DBContext{}, "users", "not-a-struct")
+	_, _, err = InsertFromStruct(context.Background(), &DBContext{}, "users", "not-a-struct")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "expected struct input")
 
 	type EmptyByOmit struct {
 		Name string `db:"name,omitempty"`
 	}
-	_, _, err = InsertFromStruct(&DBContext{}, "users", EmptyByOmit{})
+	_, _, err = InsertFromStruct(context.Background(), &DBContext{}, "users", EmptyByOmit{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no insertable fields")
 }
@@ -552,10 +552,10 @@ func TestMySQLPrimaryKeyHelpersRejectEveryUnsafeIdentifier(t *testing.T) {
 		},
 	}
 
-	_, err := DeleteByPrimaryKey(dbctx, "users", "id;DROP", 1)
+	_, err := DeleteByPrimaryKey(context.Background(), dbctx, "users", "id;DROP", 1)
 	assert.Error(t, err)
 
-	_, err = SoftDeleteByPrimaryKey(dbctx, "users", "deleted", "id desc", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), dbctx, "users", "deleted", "id desc", 1)
 	assert.Error(t, err)
 }
 
@@ -582,7 +582,7 @@ func TestMySQLMapHelpersAreDeterministicAndParameterized(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		capturedQuery = ""
 		capturedArgs = nil
-		rows, id, err := InsertFromMap(dbctx, "users", data)
+		rows, id, err := InsertFromMap(context.Background(), dbctx, "users", data)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 		assert.Equal(t, int64(10), id)
@@ -593,7 +593,7 @@ func TestMySQLMapHelpersAreDeterministicAndParameterized(t *testing.T) {
 
 	capturedQuery = ""
 	capturedArgs = nil
-	rows, err := UpdateFromMap(dbctx, "users", data, "id = ?", 77)
+	rows, err := UpdateFromMap(context.Background(), dbctx, "users", data, "id = ?", 77)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 	assert.Equal(t, "UPDATE `users` SET `a_col` = ?, `z_col` = ? WHERE id = ?", capturedQuery)
@@ -673,17 +673,17 @@ func TestUpdateFromMapRejectsEmptyInputs(t *testing.T) {
 		},
 	}
 
-	rows, err := UpdateFromMap(dbctx, "users", map[string]interface{}{}, "id = ?", 1)
+	rows, err := UpdateFromMap(context.Background(), dbctx, "users", map[string]interface{}{}, "id = ?", 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), rows)
 
-	rows, err = UpdateFromMap(dbctx, "users", map[string]interface{}{"name": "Alice"}, "   ", 1)
+	rows, err = UpdateFromMap(context.Background(), dbctx, "users", map[string]interface{}{"name": "Alice"}, "   ", 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), rows)
 }
 
 func TestInsertFromMapNilDBContextAfterValidSQL(t *testing.T) {
-	rows, id, err := InsertFromMap(nil, "users", map[string]interface{}{"name": "Alice"})
+	rows, id, err := InsertFromMap(context.Background(), nil, "users", map[string]interface{}{"name": "Alice"})
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), rows)
 	assert.Equal(t, int64(0), id)
@@ -908,7 +908,7 @@ func TestUpdateFromMap(t *testing.T) {
 	expectedArgs := []interface{}{"Charlie", 101}
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, err := UpdateFromMap(nil, tableName, data, whereClause, params...)
+		_, err := UpdateFromMap(context.Background(), nil, tableName, data, whereClause, params...)
 		assert.Error(t, err)
 	})
 
@@ -922,7 +922,7 @@ func TestUpdateFromMap(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{cluster: {}}
 		instances = map[string]MySqlDbInterface{cluster: mockDb}
 
-		rows, err := UpdateFromMap(&DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
+		rows, err := UpdateFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 
@@ -945,7 +945,7 @@ func TestUpdateFromMap(t *testing.T) {
 			helperMySqlConnector = original
 		})
 
-		rows, err := UpdateFromMap(&DBContext{Cluster: "invalid_cluster"}, tableName, data, whereClause, params...)
+		rows, err := UpdateFromMap(context.Background(), &DBContext{Cluster: "invalid_cluster"}, tableName, data, whereClause, params...)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 	})
@@ -957,7 +957,7 @@ func TestUpdateFromMap(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{cluster: {}}
 		instances = map[string]MySqlDbInterface{cluster: mockDb}
 
-		rows, err := UpdateFromMap(&DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
+		rows, err := UpdateFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 		assert.Contains(t, err.Error(), "forced exec failure")
@@ -974,7 +974,7 @@ func TestUpdateFromMap(t *testing.T) {
 
 		instances = map[string]MySqlDbInterface{cluster: mockDb}
 
-		rows, err := UpdateFromMap(&DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
+		rows, err := UpdateFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data, whereClause, params...)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 
@@ -990,7 +990,7 @@ func TestInsertFromMap(t *testing.T) {
 	data := map[string]interface{}{"name": "Bob"}
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, _, err := InsertFromMap(nil, "users", make(map[string]interface{}))
+		_, _, err := InsertFromMap(context.Background(), nil, "users", make(map[string]interface{}))
 		assert.Error(t, err)
 	})
 
@@ -1005,7 +1005,7 @@ func TestInsertFromMap(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{cluster: {}}
 		instances = map[string]MySqlDbInterface{cluster: mdb}
 
-		rowsAffected, insertId, err := InsertFromMap(&DBContext{Cluster: cluster}, tableName, data)
+		rowsAffected, insertId, err := InsertFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data)
 
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rowsAffected)
@@ -1017,7 +1017,7 @@ func TestInsertFromMap(t *testing.T) {
 
 	t.Run("DBConnectionFailure", func(t *testing.T) {
 		instances = map[string]MySqlDbInterface{}
-		rowsAffected, insertId, err := InsertFromMap(&DBContext{Cluster: "invalid_cluster"}, tableName, data)
+		rowsAffected, insertId, err := InsertFromMap(context.Background(), &DBContext{Cluster: "invalid_cluster"}, tableName, data)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rowsAffected)
 		assert.Equal(t, int64(0), insertId)
@@ -1030,7 +1030,7 @@ func TestInsertFromMap(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{cluster: {}}
 		instances = map[string]MySqlDbInterface{cluster: mdb}
 
-		rowsAffected, insertId, err := InsertFromMap(&DBContext{Cluster: cluster}, tableName, data)
+		rowsAffected, insertId, err := InsertFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "forced exec error")
 		assert.Equal(t, int64(0), rowsAffected)
@@ -1049,7 +1049,7 @@ func TestInsertFromMap(t *testing.T) {
 
 		instances = map[string]MySqlDbInterface{cluster: mdb}
 
-		rowsAffected, insertId, err := InsertFromMap(&DBContext{Cluster: cluster}, tableName, data)
+		rowsAffected, insertId, err := InsertFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rowsAffected)
 		assert.Equal(t, int64(1002), insertId)
@@ -1068,7 +1068,7 @@ func TestInsertFromMap(t *testing.T) {
 
 		instances = map[string]MySqlDbInterface{cluster: mdb}
 
-		rowsAffected, insertId, err := InsertFromMap(&DBContext{Cluster: cluster}, tableName, data)
+		rowsAffected, insertId, err := InsertFromMap(context.Background(), &DBContext{Cluster: cluster}, tableName, data)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(2), rowsAffected)
 		assert.Equal(t, int64(0), insertId)
@@ -1092,7 +1092,7 @@ func TestInsertFromStruct(t *testing.T) {
 	}
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, _, err := InsertFromStruct(nil, "users", new(User))
+		_, _, err := InsertFromStruct(context.Background(), nil, "users", new(User))
 		assert.Error(t, err)
 	})
 
@@ -1110,7 +1110,7 @@ func TestInsertFromStruct(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{"test-cluster": {}}
 		instances = map[string]MySqlDbInterface{"test-cluster": mockDb}
 
-		rows, id, err := InsertFromStruct(&DBContext{Cluster: "test-cluster"}, "users", &user)
+		rows, id, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "test-cluster"}, "users", &user)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 		assert.Equal(t, int64(1001), id)
@@ -1128,7 +1128,7 @@ func TestInsertFromStruct(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{"test-cluster": {}}
 		instances = map[string]MySqlDbInterface{"test-cluster": new(MockedMySqlDb)}
 
-		_, _, err := InsertFromStruct(&DBContext{Cluster: "test-cluster"}, "badtable", input)
+		_, _, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "test-cluster"}, "badtable", input)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "json: unsupported type")
 	})
@@ -1141,7 +1141,7 @@ func TestInsertFromStruct(t *testing.T) {
 		connectionConfigMap = map[string]*ConnectionConfig{"test-cluster": {}}
 		instances = map[string]MySqlDbInterface{"test-cluster": mockDb}
 
-		_, _, err := InsertFromStruct(&DBContext{Cluster: "test-cluster"}, "users", user)
+		_, _, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "test-cluster"}, "users", user)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "exec error")
 	})
@@ -1156,7 +1156,7 @@ func TestInsertFromStruct(t *testing.T) {
 		mockDb.On("Exec", mock.Anything, mock.Anything).Return(mockResult, nil)
 
 		instances = map[string]MySqlDbInterface{"test-cluster": mockDb}
-		rows, id, err := InsertFromStruct(&DBContext{Cluster: "test-cluster"}, "users", user)
+		rows, id, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "test-cluster"}, "users", user)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 		assert.Equal(t, int64(1001), id)
@@ -1172,7 +1172,7 @@ func TestInsertFromStruct(t *testing.T) {
 		mockDb.On("Exec", mock.Anything, mock.Anything).Return(mockResult, nil)
 
 		instances = map[string]MySqlDbInterface{"test-cluster": mockDb}
-		rows, id, err := InsertFromStruct(&DBContext{Cluster: "test-cluster"}, "users", user)
+		rows, id, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "test-cluster"}, "users", user)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 		assert.Equal(t, int64(0), id)
@@ -1182,7 +1182,7 @@ func TestInsertFromStruct(t *testing.T) {
 		instances = map[string]MySqlDbInterface{}
 		connectionConfigMap = map[string]*ConnectionConfig{}
 
-		_, _, err := InsertFromStruct(&DBContext{Cluster: "invalid-cluster"}, "users", User{})
+		_, _, err := InsertFromStruct(context.Background(), &DBContext{Cluster: "invalid-cluster"}, "users", User{})
 		assert.Error(t, err)
 	})
 }
@@ -1191,7 +1191,7 @@ func TestDeleteByPrimaryKey(t *testing.T) {
 	query := "DELETE FROM `test_table` WHERE `id` = ?"
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, err := DeleteByPrimaryKey(nil, "test_table", "id", 101)
+		_, err := DeleteByPrimaryKey(context.Background(), nil, "test_table", "id", 101)
 		assert.Error(t, err)
 	})
 
@@ -1209,7 +1209,7 @@ func TestDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := DeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
+		rows, err := DeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 
@@ -1220,7 +1220,7 @@ func TestDeleteByPrimaryKey(t *testing.T) {
 	t.Run("DBConnectionFailure", func(t *testing.T) {
 		instances = nil // simulate no connection in pool
 
-		rows, err := DeleteByPrimaryKey(&DBContext{Cluster: "unknown-cluster"}, "test_table", "id", 101)
+		rows, err := DeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "unknown-cluster"}, "test_table", "id", 101)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 	})
@@ -1235,7 +1235,7 @@ func TestDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := DeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
+		rows, err := DeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 
@@ -1256,7 +1256,7 @@ func TestDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := DeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
+		rows, err := DeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "id", 101)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), rows)
 
@@ -1269,7 +1269,7 @@ func TestSoftDeleteByPrimaryKey(t *testing.T) {
 	query := "UPDATE `test_table` SET `is_deleted` = 1 WHERE `id` = ?"
 
 	t.Run("InvalidDBContext", func(t *testing.T) {
-		_, err := SoftDeleteByPrimaryKey(nil, "test_table", "is_deleted", "id", 101)
+		_, err := SoftDeleteByPrimaryKey(context.Background(), nil, "test_table", "is_deleted", "id", 101)
 		assert.Error(t, err)
 	})
 
@@ -1286,7 +1286,7 @@ func TestSoftDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := SoftDeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
+		rows, err := SoftDeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 		mockDb.AssertExpectations(t)
@@ -1295,7 +1295,7 @@ func TestSoftDeleteByPrimaryKey(t *testing.T) {
 
 	t.Run("DBConnectionFailure", func(t *testing.T) {
 		instances = map[string]MySqlDbInterface{}
-		rows, err := SoftDeleteByPrimaryKey(&DBContext{Cluster: "invalid-cluster"}, "test_table", "is_deleted", "id", 101)
+		rows, err := SoftDeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "invalid-cluster"}, "test_table", "is_deleted", "id", 101)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 	})
@@ -1310,7 +1310,7 @@ func TestSoftDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := SoftDeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
+		rows, err := SoftDeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
 		assert.Error(t, err)
 		assert.Equal(t, int64(0), rows)
 		mockDb.AssertExpectations(t)
@@ -1329,7 +1329,7 @@ func TestSoftDeleteByPrimaryKey(t *testing.T) {
 			"test-cluster": mockDb,
 		}
 
-		rows, err := SoftDeleteByPrimaryKey(&DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
+		rows, err := SoftDeleteByPrimaryKey(context.Background(), &DBContext{Cluster: "test-cluster"}, "test_table", "is_deleted", "id", 101)
 		assert.NoError(t, err) // still returns no error
 		assert.Equal(t, int64(0), rows)
 		mockDb.AssertExpectations(t)
@@ -1361,7 +1361,7 @@ func TestMultiInsertFromStructsArray_RowsAffectedError(t *testing.T) {
 
 	SetConnectionConfig("rows-affected-cluster", &ConnectionConfig{Host: "localhost", Port: "3306"})
 
-	rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "rows-affected-cluster"}, "users", []User{
+	rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "rows-affected-cluster"}, "users", []User{
 		{ID: 1, Name: "A"},
 		{ID: 2, Name: "B"},
 	})
@@ -1377,7 +1377,7 @@ func TestMultiInsertFromStructsArray_GenerationError(t *testing.T) {
 		Payload BadInner `db:"payload,marshaljson"`
 	}
 
-	rows, err := MultiInsertFromStructsArray(&DBContext{Cluster: "rows-affected-cluster"}, "bad", []Bad{
+	rows, err := MultiInsertFromStructsArray(context.Background(), &DBContext{Cluster: "rows-affected-cluster"}, "bad", []Bad{
 		{Payload: BadInner{C: make(chan int)}},
 	})
 	assert.Error(t, err)
@@ -1517,7 +1517,7 @@ func testMySQLReadContext(t *testing.T) *DBContext {
 func TestExecuteReadQuery_SuccessAndCapitalise(t *testing.T) {
 	ctx := testMySQLReadContext(t)
 
-	out, err := ExecuteReadQuery(ctx, ReadQueryInput{
+	out, err := ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{
 		Query:             "select ok",
 		CapitaliseColumns: true,
 	})
@@ -1533,18 +1533,18 @@ func TestExecuteReadQuery_SuccessAndCapitalise(t *testing.T) {
 func TestExecuteReadQuery_QueryAndScanAndRowsErrors(t *testing.T) {
 	ctx := testMySQLReadContext(t)
 
-	_, err := ExecuteReadQuery(ctx, ReadQueryInput{Query: "query_error"})
+	_, err := ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "query_error"})
 	assert.Error(t, err)
 
 	origScan := scanReadRow
 	scanReadRow = func(rows *sql.Rows, dest ...interface{}) error {
 		return errors.New("scan error")
 	}
-	_, err = ExecuteReadQuery(ctx, ReadQueryInput{Query: "scan_error"})
+	_, err = ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "scan_error"})
 	scanReadRow = origScan
 	assert.Error(t, err)
 
-	_, err = ExecuteReadQuery(ctx, ReadQueryInput{Query: "rows_error"})
+	_, err = ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "rows_error"})
 	assert.Error(t, err)
 }
 
@@ -1557,12 +1557,12 @@ func TestExecuteReadQuery_ColumnsError(t *testing.T) {
 	}
 	defer func() { getReadColumns = origCols }()
 
-	_, err := ExecuteReadQuery(ctx, ReadQueryInput{Query: "select ok"})
+	_, err := ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "select ok"})
 	assert.Error(t, err)
 }
 
 func TestExecuteReadQuery_Errors(t *testing.T) {
-	_, err := ExecuteReadQuery(nil, ReadQueryInput{Query: "SELECT 1"})
+	_, err := ExecuteReadQuery(context.Background(), nil, ReadQueryInput{Query: "SELECT 1"})
 	assert.Error(t, err)
 
 	ctx := &DBContext{
@@ -1570,7 +1570,7 @@ func TestExecuteReadQuery_Errors(t *testing.T) {
 			return nil, errors.New("prepare fail")
 		},
 	}
-	_, err = ExecuteReadQuery(ctx, ReadQueryInput{Query: "SELECT 1"})
+	_, err = ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "SELECT 1"})
 	assert.Error(t, err)
 
 	ctx = &DBContext{
@@ -1581,6 +1581,6 @@ func TestExecuteReadQuery_Errors(t *testing.T) {
 			return nil, errors.New("query fail")
 		},
 	}
-	_, err = ExecuteReadQuery(ctx, ReadQueryInput{Query: "SELECT 1"})
+	_, err = ExecuteReadQuery(context.Background(), ctx, ReadQueryInput{Query: "SELECT 1"})
 	assert.Error(t, err)
 }

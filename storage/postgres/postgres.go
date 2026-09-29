@@ -38,20 +38,15 @@ func (pdbc *PostgresDbConnector) Open(driverName, dataSourceName string) (Postgr
 // Raw() exists as an escape hatch for tooling/migrations/sqlc/etc.
 type PostgresDbInterface interface {
 	Close() error
-	Ping() error
-	PingContext(ctx context.Context) error
+	Ping(ctx context.Context) error
 
-	Exec(query string, args ...any) (sql.Result, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	Exec(ctx context.Context, query string, args ...any) (sql.Result, error)
 
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	Query(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 
-	QueryRow(query string, args ...any) *sql.Row
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryRow(ctx context.Context, query string, args ...any) *sql.Row
 
-	Prepare(query string) (*sql.Stmt, error)
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
 
 	Begin() (*sql.Tx, error)
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
@@ -65,37 +60,25 @@ type PostgresDbInterface interface {
 	Raw() *sql.DB
 }
 
-// PostgresDb embeds *sql.DB to avoid wrapper traps while still allowing Raw() to be explicit.
+// PostgresDb wraps *sql.DB while keeping Photon's DB surface context-aware.
 type PostgresDb struct {
 	DB *sql.DB
 }
 
-// Ensure PostgresDb implements PostgresDbInterface without wrapper rework.
 func (pdb *PostgresDb) Close() error { return pdb.DB.Close() }
-func (pdb *PostgresDb) Ping() error  { return pdb.DB.Ping() }
-func (pdb *PostgresDb) PingContext(ctx context.Context) error {
+func (pdb *PostgresDb) Ping(ctx context.Context) error {
 	return pdb.DB.PingContext(ctx)
 }
-func (pdb *PostgresDb) Exec(query string, args ...any) (sql.Result, error) {
-	return pdb.DB.Exec(query, args...)
-}
-func (pdb *PostgresDb) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (pdb *PostgresDb) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return pdb.DB.ExecContext(ctx, query, args...)
 }
-func (pdb *PostgresDb) Query(query string, args ...any) (*sql.Rows, error) {
-	return pdb.DB.Query(query, args...)
-}
-func (pdb *PostgresDb) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (pdb *PostgresDb) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return pdb.DB.QueryContext(ctx, query, args...)
 }
-func (pdb *PostgresDb) QueryRow(query string, args ...any) *sql.Row {
-	return pdb.DB.QueryRow(query, args...)
-}
-func (pdb *PostgresDb) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+func (pdb *PostgresDb) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
 	return pdb.DB.QueryRowContext(ctx, query, args...)
 }
-func (pdb *PostgresDb) Prepare(query string) (*sql.Stmt, error) { return pdb.DB.Prepare(query) }
-func (pdb *PostgresDb) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (pdb *PostgresDb) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	return pdb.DB.PrepareContext(ctx, query)
 }
 func (pdb *PostgresDb) Begin() (*sql.Tx, error) { return pdb.DB.Begin() }
@@ -275,7 +258,7 @@ func newInstance(connector PostgresDbConnectorInterface, cfg *ConnectionConfig) 
 	defer cancel()
 
 	// TODO(otel): record ping latency and result
-	if err := dbi.PingContext(pingCtx); err != nil {
+	if err := dbi.Ping(pingCtx); err != nil {
 		_ = dbi.Close()
 		return nil, err
 	}

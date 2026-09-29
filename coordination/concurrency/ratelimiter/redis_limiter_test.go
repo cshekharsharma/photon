@@ -62,13 +62,79 @@ func TestRedisLimiter_Allow_WithMockedScript(t *testing.T) {
 	limiter.script = &redisv9.Script{}
 
 	limiter.script = mockScript
-	mockScript.On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(int64(1))
+	mockScript.On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]interface{}{int64(1), int64(2), int64(0)})
 
-	allowed, err := limiter.Allow(ctx, "ratelimit:unit:test")
+	result, err := limiter.Allow(ctx, "ratelimit:unit:test")
 	assert.NoError(t, err)
-	assert.True(t, allowed)
+	assert.True(t, result.Allowed)
 	mockRedis.AssertExpectations(t)
 	mockScript.AssertExpectations(t)
+}
+
+func TestRedisLimiter_Allow_ReturnsMetadata(t *testing.T) {
+	ctx := context.Background()
+	mockRedis := new(mockRedisInterface)
+	mockScript := new(mockScript)
+
+	mockRedis.On("GetRawClient").Return(&redisv9.Client{})
+
+	limiter := NewRedisLimiter(mockRedis, 3, time.Second)
+	limiter.script = mockScript
+
+	mockScript.On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return([]interface{}{int64(0), int64(0), int64(750)})
+
+	result, err := limiter.Allow(ctx, "ratelimit:unit:limited")
+	assert.NoError(t, err)
+	assert.False(t, result.Allowed)
+	assert.Equal(t, int64(0), result.Remaining)
+	assert.Equal(t, 750*time.Millisecond, result.RetryAfter)
+	mockRedis.AssertExpectations(t)
+	mockScript.AssertExpectations(t)
+}
+
+func TestRedisLimiter_Allow_Validation(t *testing.T) {
+	mockRedis := new(mockRedisInterface)
+	limiter := NewRedisLimiter(mockRedis, 3, time.Second)
+
+	var nilContext context.Context
+	_, err := limiter.Allow(nilContext, "ratelimit:unit:nil-context")
+	assert.EqualError(t, err, "context cannot be nil")
+
+	_, err = limiter.Allow(context.Background(), " \n\t")
+	assert.EqualError(t, err, "rate limit key cannot be empty")
+
+	limiter.maxTokens = 0
+	_, err = limiter.Allow(context.Background(), "ratelimit:unit:bad-config")
+	assert.EqualError(t, err, "rate limiter max tokens must be positive")
+
+	limiter.maxTokens = 1
+	limiter.interval = 0
+	_, err = limiter.Allow(context.Background(), "ratelimit:unit:bad-config")
+	assert.EqualError(t, err, "rate limiter interval must be positive")
+}
+
+func TestRedisLimiter_Allow_ParseErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		message string
+	}{
+		{name: "wrong type", value: int64(1), message: "unexpected script return type: int64"},
+		{name: "wrong length", value: []interface{}{int64(1)}, message: "unexpected script return length: 1"},
+		{name: "bad allowed", value: []interface{}{"yes", int64(0), int64(0)}, message: "invalid allowed value: unexpected type string"},
+		{name: "bad remaining", value: []interface{}{int64(1), "0", int64(0)}, message: "invalid remaining value: unexpected type string"},
+		{name: "bad retry after", value: []interface{}{int64(1), int64(0), "0"}, message: "invalid retry-after value: unexpected type string"},
+		{name: "negative retry after", value: []interface{}{int64(1), int64(0), int64(-1)}, message: "invalid retry-after value: negative duration"},
+		{name: "overflow retry after", value: []interface{}{int64(1), int64(0), int64(1<<63 - 1)}, message: "invalid retry-after value: duration overflow"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseRateLimitResult(tt.value)
+			assert.EqualError(t, err, tt.message)
+		})
+	}
 }
 
 func TestRedisLimiter_Allow_ScriptError(t *testing.T) {
@@ -79,12 +145,13 @@ func TestRedisLimiter_Allow_ScriptError(t *testing.T) {
 
 	limiter := NewRedisLimiter(mockRedis, 3, time.Second)
 	mockScript := &mockScript{}
-	mockScript.On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockScript.On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("redis unavailable"))
 
 	limiter.script = mockScript
 
 	_, err := limiter.Allow(ctx, "ratelimit:unit:err")
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "redis script error")
 	mockRedis.AssertExpectations(t)
 }
 
@@ -102,8 +169,8 @@ func TestRedisLimiter_Allow_RunReturnsError(t *testing.T) {
 		On("Run", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(errors.New("lua exploded"))
 
-	allowed, err := limiter.Allow(ctx, "ratelimit:unit:script-err")
-	assert.False(t, allowed)
+	result, err := limiter.Allow(ctx, "ratelimit:unit:script-err")
+	assert.False(t, result.Allowed)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "redis script error")
 	mockRedis.AssertExpectations(t)

@@ -70,14 +70,10 @@ func (mdbc *MySqlDbConnector) Open(driverName string, dataSourceName string) (My
 // It abstracts common database operations, making it easier to work with
 // different database systems and allowing for easier mocking in tests.
 type MySqlDbInterface interface {
-	Ping() error
-	PingContext(ctx context.Context) error
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRow(query string, args ...interface{}) *sql.Row
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	Ping(ctx context.Context) error
+	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
 	SetConnMaxLifetime(d time.Duration)
 	SetMaxIdleConns(n int)
 	SetMaxOpenConns(n int)
@@ -85,8 +81,7 @@ type MySqlDbInterface interface {
 	Stats() sql.DBStats
 	Begin() (*sql.Tx, error)
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-	Prepare(query string) (*sql.Stmt, error)
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
 	Driver() driver.Driver
 	Conn(ctx context.Context) (*sql.Conn, error)
 	Close() error
@@ -114,11 +109,7 @@ func (mdb *MySqlDb) Close() error {
 //
 // Returns:
 // - An error if the connection isn't alive or any other issues are encountered.
-func (mdb *MySqlDb) Ping() error {
-	return mdb.DB.Ping()
-}
-
-// PingContext checks the database connection for liveness, with the given context.
+// Ping checks the database connection for liveness, with the given context.
 // Useful when you want to provide a timeout or cancel the operation.
 //
 // Parameters:
@@ -126,7 +117,7 @@ func (mdb *MySqlDb) Ping() error {
 //
 // Returns:
 //   - An error if the connection isn't alive, context times out, or any other issues arise.
-func (mdb *MySqlDb) PingContext(ctx context.Context) error {
+func (mdb *MySqlDb) Ping(ctx context.Context) error {
 	return mdb.DB.PingContext(ctx)
 }
 
@@ -139,21 +130,7 @@ func (mdb *MySqlDb) PingContext(ctx context.Context) error {
 // Returns:
 //   - Result of the executed query.
 //   - Any error encountered during execution.
-func (mdb *MySqlDb) Exec(query string, args ...interface{}) (sql.Result, error) {
-	return mdb.DB.Exec(query, args...)
-}
-
-// ExecContext behaves like Exec but allows for a provided context.
-//
-// Parameters:
-//   - ctx: Context to use for the execution.
-//   - query: The SQL query string to execute.
-//   - args: Parameters for the SQL query.
-//
-// Returns:
-//   - Result of the executed query.
-//   - Any error encountered during execution.
-func (mdb *MySqlDb) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func (mdb *MySqlDb) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	return mdb.DB.ExecContext(ctx, query, args...)
 }
 
@@ -168,22 +145,7 @@ func (mdb *MySqlDb) ExecContext(ctx context.Context, query string, args ...inter
 // Returns:
 //   - A pointer to the retrieved rows.
 //   - Any error encountered during execution.
-func (mdb *MySqlDb) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	return mdb.DB.Query(query, args...)
-}
-
-// QueryContext behaves like Query but allows for a provided context.
-// The context can be used to cancel or time out the executed SQL query.
-//
-// Parameters:
-//   - ctx: Context to use for the execution.
-//   - query: The SQL query string to execute.
-//   - args: Parameters for the SQL query.
-//
-// Returns:
-//   - A pointer to the retrieved rows.
-//   - Any error encountered during execution.
-func (mdb *MySqlDb) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (mdb *MySqlDb) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	return mdb.DB.QueryContext(ctx, query, args...)
 }
 
@@ -197,21 +159,7 @@ func (mdb *MySqlDb) QueryContext(ctx context.Context, query string, args ...inte
 //
 // Returns:
 //   - A pointer to the retrieved single row.
-func (mdb *MySqlDb) QueryRow(query string, args ...interface{}) *sql.Row {
-	return mdb.DB.QueryRow(query, args...)
-}
-
-// QueryRowContext behaves like QueryRow but allows for a provided context.
-// The context can be used to cancel or time out the executed SQL query.
-//
-// Parameters:
-//   - ctx: Context to use for the execution.
-//   - query: The SQL query string to execute.
-//   - args: Parameters for the SQL query.
-//
-// Returns:
-//   - A pointer to the retrieved single row.
-func (mdb *MySqlDb) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (mdb *MySqlDb) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	return mdb.DB.QueryRowContext(ctx, query, args...)
 }
 
@@ -299,21 +247,7 @@ func (mdb *MySqlDb) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, 
 // Returns:
 //   - *sql.Stmt: A statement object which can be executed with different parameters.
 //   - error: An error object detailing any issues preparing the statement.
-func (mdb *MySqlDb) Prepare(query string) (*sql.Stmt, error) {
-	return mdb.DB.Prepare(query)
-}
-
-// PrepareContext creates a prepared statement using the provided context.
-// This method allows for the cancellation of statement preparation.
-//
-// Parameters:
-//   - ctx: Context for the statement preparation.
-//   - query: SQL query string possibly containing placeholders.
-//
-// Returns:
-//   - *sql.Stmt: A statement object which can be executed with different parameters.
-//   - error: An error object detailing any issues preparing the statement.
-func (mdb *MySqlDb) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (mdb *MySqlDb) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	return mdb.DB.PrepareContext(ctx, query)
 }
 
@@ -397,13 +331,9 @@ func SetConnectionConfig(clusterName string, config *ConnectionConfig) {
 //     It returns nil if the connection was successful.
 //
 // Note: This method is thread-safe and uses mutexes to handle concurrent access.
-func Connect(connector MySqlDbConnectorInterface, clusterName string) (MySqlDbInterface, error) {
-	return ConnectContext(context.Background(), connector, clusterName)
-}
-
-// ConnectContext establishes or reuses a MySQL connection for clusterName.
+// Connect establishes or reuses a MySQL connection for clusterName.
 // The supplied context is honored while opening and pinging a new connection.
-func ConnectContext(ctx context.Context, connector MySqlDbConnectorInterface, clusterName string) (MySqlDbInterface, error) {
+func Connect(ctx context.Context, connector MySqlDbConnectorInterface, clusterName string) (MySqlDbInterface, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -433,7 +363,7 @@ func ConnectContext(ctx context.Context, connector MySqlDbConnectorInterface, cl
 		return nil, fmt.Errorf("initialise db config using mysql.SetConnectionConfig() before use")
 	}
 
-	newConn, err = newInstanceContext(ctx, connector, dbconfig)
+	newConn, err = newInstance(ctx, connector, dbconfig)
 	if err != nil || newConn == nil {
 		return nil, err
 	}
@@ -443,15 +373,7 @@ func ConnectContext(ctx context.Context, connector MySqlDbConnectorInterface, cl
 	return newConn, nil
 }
 
-// newInstance creates a new database connection instance to a specified
-// database cluster using configurations derived from the cluster name.
-// It sets up the connection pool settings, including max open connections,
-// max idle connections, connection max life time, and connection max idle time.
-func newInstance(connector MySqlDbConnectorInterface, dbconfig *ConnectionConfig) (MySqlDbInterface, error) {
-	return newInstanceContext(context.Background(), connector, dbconfig)
-}
-
-func newInstanceContext(ctx context.Context, connector MySqlDbConnectorInterface, dbconfig *ConnectionConfig) (MySqlDbInterface, error) {
+func newInstance(ctx context.Context, connector MySqlDbConnectorInterface, dbconfig *ConnectionConfig) (MySqlDbInterface, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -474,7 +396,7 @@ func newInstanceContext(ctx context.Context, connector MySqlDbConnectorInterface
 	db.SetConnMaxLifetime(time.Duration(int(dbconfig.MaxConnLifetime)) * time.Second)
 	db.SetConnMaxIdleTime(time.Duration(int(dbconfig.ConnMaxIdleTime)) * time.Second)
 
-	err = db.PingContext(ctx)
+	err = db.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}

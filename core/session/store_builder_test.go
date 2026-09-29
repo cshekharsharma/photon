@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestBuildStore_Redis(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return &mockConn{}, nil
 	}
 
@@ -56,7 +57,7 @@ func TestBuildStore_RedisError(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return nil, errors.New("redis fail")
 	}
 

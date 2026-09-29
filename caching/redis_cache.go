@@ -55,7 +55,7 @@ func NewRedisCache(opts *Options, connector redis.RedisConnectorInterface) (*Red
 		Password: opts.Password,
 	})
 
-	client, err := redis.Connect(connector, opts.Cluster)
+	client, err := redis.Connect(context.Background(), connector, opts.Cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +69,7 @@ func NewRedisCache(opts *Options, connector redis.RedisConnectorInterface) (*Red
 }
 
 // Exists checks if the key exists in Redis.
-func (r *RedisCache) Exists(request *ExistsRequest) (bool, error) {
-	return r.ExistsContext(context.Background(), request)
-}
-
-func (r *RedisCache) ExistsContext(ctx context.Context, request *ExistsRequest) (bool, error) {
+func (r *RedisCache) Exists(ctx context.Context, request *ExistsRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -85,11 +81,7 @@ func (r *RedisCache) ExistsContext(ctx context.Context, request *ExistsRequest) 
 }
 
 // Get retrieves a value from Redis.
-func (r *RedisCache) Get(request *GetRequest) (any, error) {
-	return r.GetContext(context.Background(), request)
-}
-
-func (r *RedisCache) GetContext(ctx context.Context, request *GetRequest) (any, error) {
+func (r *RedisCache) Get(ctx context.Context, request *GetRequest) (any, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -107,11 +99,7 @@ func (r *RedisCache) GetContext(ctx context.Context, request *GetRequest) (any, 
 }
 
 // Set stores a key-value pair in Redis with optional TTL.
-func (r *RedisCache) Set(request *SetRequest) (bool, error) {
-	return r.SetContext(context.Background(), request)
-}
-
-func (r *RedisCache) SetContext(ctx context.Context, request *SetRequest) (bool, error) {
+func (r *RedisCache) Set(ctx context.Context, request *SetRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -128,11 +116,7 @@ func (r *RedisCache) SetContext(ctx context.Context, request *SetRequest) (bool,
 }
 
 // Delete removes a key from Redis.
-func (r *RedisCache) Delete(request *DeleteRequest) (bool, error) {
-	return r.DeleteContext(context.Background(), request)
-}
-
-func (r *RedisCache) DeleteContext(ctx context.Context, request *DeleteRequest) (bool, error) {
+func (r *RedisCache) Delete(ctx context.Context, request *DeleteRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -144,11 +128,7 @@ func (r *RedisCache) DeleteContext(ctx context.Context, request *DeleteRequest) 
 }
 
 // MultiGet retrieves multiple keys in batch.
-func (r *RedisCache) MultiGet(request *MultiGetRequest) (map[string]any, error) {
-	return r.MultiGetContext(context.Background(), request)
-}
-
-func (r *RedisCache) MultiGetContext(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
+func (r *RedisCache) MultiGet(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -176,11 +156,7 @@ func (r *RedisCache) MultiGetContext(ctx context.Context, request *MultiGetReque
 }
 
 // MultiSet stores multiple key-value pairs in one batch.
-func (r *RedisCache) MultiSet(request *MultiSetRequest) (map[string]bool, error) {
-	return r.MultiSetContext(context.Background(), request)
-}
-
-func (r *RedisCache) MultiSetContext(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
+func (r *RedisCache) MultiSet(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -233,11 +209,7 @@ func (r *RedisCache) MultiSetContext(ctx context.Context, request *MultiSetReque
 }
 
 // MultiDelete deletes multiple keys.
-func (r *RedisCache) MultiDelete(request *MultiDeleteRequest) (map[string]bool, error) {
-	return r.MultiDeleteContext(context.Background(), request)
-}
-
-func (r *RedisCache) MultiDeleteContext(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
+func (r *RedisCache) MultiDelete(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -257,11 +229,7 @@ func (r *RedisCache) MultiDeleteContext(ctx context.Context, request *MultiDelet
 }
 
 // Increment increases the numeric value for a key.
-func (r *RedisCache) Increment(request *IncrementRequest) error {
-	return r.IncrementContext(context.Background(), request)
-}
-
-func (r *RedisCache) IncrementContext(ctx context.Context, request *IncrementRequest) error {
+func (r *RedisCache) Increment(ctx context.Context, request *IncrementRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -273,11 +241,7 @@ func (r *RedisCache) IncrementContext(ctx context.Context, request *IncrementReq
 }
 
 // Decrement decreases the numeric value for a key.
-func (r *RedisCache) Decrement(request *DecrementRequest) error {
-	return r.DecrementContext(context.Background(), request)
-}
-
-func (r *RedisCache) DecrementContext(ctx context.Context, request *DecrementRequest) error {
+func (r *RedisCache) Decrement(ctx context.Context, request *DecrementRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -289,11 +253,7 @@ func (r *RedisCache) DecrementContext(ctx context.Context, request *DecrementReq
 }
 
 // Append appends data to a string key.
-func (r *RedisCache) Append(request *AppendRequest) error {
-	return r.AppendContext(context.Background(), request)
-}
-
-func (r *RedisCache) AppendContext(ctx context.Context, request *AppendRequest) error {
+func (r *RedisCache) Append(ctx context.Context, request *AppendRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -310,11 +270,7 @@ func (r *RedisCache) AppendContext(ctx context.Context, request *AppendRequest) 
 }
 
 // GetTTL returns the remaining TTL for a key.
-func (r *RedisCache) GetTTL(request *GetTTLRequest) (int64, error) {
-	return r.GetTTLContext(context.Background(), request)
-}
-
-func (r *RedisCache) GetTTLContext(ctx context.Context, request *GetTTLRequest) (int64, error) {
+func (r *RedisCache) GetTTL(ctx context.Context, request *GetTTLRequest) (int64, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return 0, err
@@ -329,11 +285,7 @@ func (r *RedisCache) GetTTLContext(ctx context.Context, request *GetTTLRequest) 
 }
 
 // SetTTL updates the TTL for a key.
-func (r *RedisCache) SetTTL(request *SetTTLRequest) error {
-	return r.SetTTLContext(context.Background(), request)
-}
-
-func (r *RedisCache) SetTTLContext(ctx context.Context, request *SetTTLRequest) error {
+func (r *RedisCache) SetTTL(ctx context.Context, request *SetTTLRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err

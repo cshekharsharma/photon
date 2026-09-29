@@ -180,7 +180,7 @@ func (r resultBadRowsAffected) RowsAffected() (int64, error) {
 }
 
 func TestExecuteReadQueryContext_NilDBCtx_Error(t *testing.T) {
-	_, err := ExecuteReadQueryContext(context.Background(), nil, ReadQueryInput{Query: "SELECT 1"})
+	_, err := ExecuteReadQuery(context.Background(), nil, ReadQueryInput{Query: "SELECT 1"})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -192,7 +192,7 @@ func TestExecuteReadQueryContext_QueryError(t *testing.T) {
 			return nil, errors.New("boom")
 		},
 	}
-	_, err := ExecuteReadQueryContext(context.Background(), dbctx, ReadQueryInput{Query: "X"})
+	_, err := ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{Query: "X"})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -215,7 +215,7 @@ func TestExecuteReadQueryContext_Success_TypedValues_And_Capitalise(t *testing.T
 		Conn: pdb,
 	}
 
-	out, err := ExecuteReadQueryContext(context.Background(), dbctx, ReadQueryInput{
+	out, err := ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{
 		Query:             "SELECT_OK",
 		Params:            []any{1},
 		CapitaliseColumns: true,
@@ -259,7 +259,7 @@ func TestExecuteReadQueryContext_RowsErr_Branch(t *testing.T) {
 
 	dbctx := &DBContext{Conn: &PostgresDb{DB: db}}
 
-	_, err = ExecuteReadQueryContext(context.Background(), dbctx, ReadQueryInput{
+	_, err = ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{
 		Query: "SELECT_ERR_ROWS",
 	})
 	if err == nil {
@@ -280,7 +280,7 @@ func TestNormalizePgValue_Branches(t *testing.T) {
 }
 
 func TestExecuteWriteQueryContext_NilDBCtx_Error(t *testing.T) {
-	_, _, err := ExecuteWriteQueryContext(context.Background(), nil, "Q", []any{1})
+	_, _, err := ExecuteWriteQuery(context.Background(), nil, "Q", []any{1})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -292,7 +292,7 @@ func TestExecuteWriteQueryContext_ExecError(t *testing.T) {
 			return nil, errors.New("exec fail")
 		},
 	}
-	_, _, err := ExecuteWriteQueryContext(context.Background(), dbctx, "Q", []any{1})
+	_, _, err := ExecuteWriteQuery(context.Background(), dbctx, "Q", []any{1})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -304,7 +304,7 @@ func TestExecuteWriteQueryContext_RowsAffectedError(t *testing.T) {
 			return resultBadRowsAffected{}, nil
 		},
 	}
-	_, _, err := ExecuteWriteQueryContext(context.Background(), dbctx, "Q", []any{})
+	_, _, err := ExecuteWriteQuery(context.Background(), dbctx, "Q", []any{})
 	if err == nil {
 		t.Fatalf("expected rowsAffected error")
 	}
@@ -316,7 +316,7 @@ func TestExecuteWriteQueryContext_LastInsertIdUnsupported_ReturnsZero(t *testing
 			return resultNoLastID{rows: 3}, nil
 		},
 	}
-	ra, id, err := ExecuteWriteQueryContext(context.Background(), dbctx, "Q", []any{})
+	ra, id, err := ExecuteWriteQuery(context.Background(), dbctx, "Q", []any{})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -339,11 +339,11 @@ type miRow struct {
 }
 
 func TestMultiInsertFromStructsArrayContext_Errors(t *testing.T) {
-	_, err := MultiInsertFromStructsArrayContext(context.Background(), &DBContext{}, "t", []miRow{})
+	_, err := MultiInsertFromStructsArray(context.Background(), &DBContext{}, "t", []miRow{})
 	if err == nil {
 		t.Fatalf("expected empty input error")
 	}
-	_, err = MultiInsertFromStructsArrayContext(context.Background(), nil, "t", []miRow{{ID: 1}})
+	_, err = MultiInsertFromStructsArray(context.Background(), nil, "t", []miRow{{ID: 1}})
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
@@ -366,7 +366,7 @@ func TestMultiInsertFromStructsArrayContext_GenerateAndExec_Success(t *testing.T
 		{ID: 2, Name: "b", Opt: "x", Inner: miInner{A: 9}},
 	}
 
-	ra, err := MultiInsertFromStructsArrayContext(context.Background(), dbctx, "public.tbl", rows)
+	ra, err := MultiInsertFromStructsArray(context.Background(), dbctx, "public.tbl", rows)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -431,17 +431,17 @@ type rowInsert struct {
 }
 
 func TestInsertFromStructContext_Errors(t *testing.T) {
-	_, _, err := InsertFromStructContext(context.Background(), nil, "t", miRow{ID: 1})
+	_, _, err := InsertFromStruct(context.Background(), nil, "t", miRow{ID: 1})
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
 
-	_, _, err = InsertFromStructContext(context.Background(), &DBContext{}, "bad;table", miRow{ID: 1})
+	_, _, err = InsertFromStruct(context.Background(), &DBContext{}, "bad;table", miRow{ID: 1})
 	if err == nil {
 		t.Fatalf("expected bad table ident error")
 	}
 
-	_, _, err = InsertFromStructContext(context.Background(), &DBContext{}, "t", 123)
+	_, _, err = InsertFromStruct(context.Background(), &DBContext{}, "t", 123)
 	if err == nil {
 		t.Fatalf("expected struct input error")
 	}
@@ -451,7 +451,7 @@ func TestInsertFromStructContext_NoInsertableFields_Error(t *testing.T) {
 	type onlySkip struct {
 		X string `db:"-"`
 	}
-	_, _, err := InsertFromStructContext(context.Background(), &DBContext{}, "t", onlySkip{X: "x"})
+	_, _, err := InsertFromStruct(context.Background(), &DBContext{}, "t", onlySkip{X: "x"})
 	if err == nil {
 		t.Fatalf("expected no insertable fields error")
 	}
@@ -460,7 +460,7 @@ func TestInsertFromStructContext_NoInsertableFields_Error(t *testing.T) {
 func TestInsertFromStructContext_MarshalJSONError(t *testing.T) {
 	// badJSON contains func => json.Marshal fails
 	dbctx := &DBContext{}
-	_, _, err := InsertFromStructContext(context.Background(), dbctx, "t", rowInsert{ID: 1, JS: badJSON{}})
+	_, _, err := InsertFromStruct(context.Background(), dbctx, "t", rowInsert{ID: 1, JS: badJSON{}})
 	if err == nil {
 		t.Fatalf("expected json marshal error")
 	}
@@ -475,7 +475,7 @@ func TestInsertFromStructContext_Success_ExecAndLastIdFallback(t *testing.T) {
 			return resultNoLastID{rows: 1}, nil
 		},
 	}
-	ra, id, err := InsertFromStructContext(context.Background(), dbctx, "t", miRow{ID: 1, Name: "", Inner: miInner{A: 1}})
+	ra, id, err := InsertFromStruct(context.Background(), dbctx, "t", miRow{ID: 1, Name: "", Inner: miInner{A: 1}})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -488,19 +488,19 @@ func TestInsertFromStructContext_Success_ExecAndLastIdFallback(t *testing.T) {
 }
 
 func TestInsertFromMapContext_Errors(t *testing.T) {
-	_, _, err := InsertFromMapContext(context.Background(), nil, "t", map[string]any{"a": 1})
+	_, _, err := InsertFromMap(context.Background(), nil, "t", map[string]any{"a": 1})
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
-	_, _, err = InsertFromMapContext(context.Background(), &DBContext{}, "t", map[string]any{})
+	_, _, err = InsertFromMap(context.Background(), &DBContext{}, "t", map[string]any{})
 	if err == nil {
 		t.Fatalf("expected empty map error")
 	}
-	_, _, err = InsertFromMapContext(context.Background(), &DBContext{}, "bad;table", map[string]any{"a": 1})
+	_, _, err = InsertFromMap(context.Background(), &DBContext{}, "bad;table", map[string]any{"a": 1})
 	if err == nil {
 		t.Fatalf("expected bad table ident")
 	}
-	_, _, err = InsertFromMapContext(context.Background(), &DBContext{}, "t", map[string]any{"bad;col": 1})
+	_, _, err = InsertFromMap(context.Background(), &DBContext{}, "t", map[string]any{"bad;col": 1})
 	if err == nil {
 		t.Fatalf("expected bad column ident")
 	}
@@ -517,7 +517,7 @@ func TestInsertFromMapContext_Success_StableOrdering(t *testing.T) {
 		},
 	}
 
-	ra, id, err := InsertFromMapContext(context.Background(), dbctx, "t", map[string]any{
+	ra, id, err := InsertFromMap(context.Background(), dbctx, "t", map[string]any{
 		"b": 2,
 		"a": 1,
 	})
@@ -537,25 +537,25 @@ func TestInsertFromMapContext_Success_StableOrdering(t *testing.T) {
 }
 
 func TestUpdateFromMapContext_Errors(t *testing.T) {
-	_, err := UpdateFromMapContext(context.Background(), nil, "t", map[string]any{"a": 1}, "id=$1")
+	_, err := UpdateFromMap(context.Background(), nil, "t", map[string]any{"a": 1}, "id=$1")
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
-	_, err = UpdateFromMapContext(context.Background(), &DBContext{}, "t", map[string]any{}, "id=$1")
+	_, err = UpdateFromMap(context.Background(), &DBContext{}, "t", map[string]any{}, "id=$1")
 	if err == nil {
 		t.Fatalf("expected empty update map error")
 	}
-	_, err = UpdateFromMapContext(context.Background(), &DBContext{}, "bad;table", map[string]any{"a": 1}, "id=$1")
+	_, err = UpdateFromMap(context.Background(), &DBContext{}, "bad;table", map[string]any{"a": 1}, "id=$1")
 	if err == nil {
 		t.Fatalf("expected bad table ident")
 	}
-	_, err = UpdateFromMapContext(context.Background(), &DBContext{}, "t", map[string]any{"bad;col": 1}, "id=$1")
+	_, err = UpdateFromMap(context.Background(), &DBContext{}, "t", map[string]any{"bad;col": 1}, "id=$1")
 	if err == nil {
 		t.Fatalf("expected bad column ident")
 	}
 
 	// mismatch '?' count vs params triggers error
-	_, err = UpdateFromMapContext(context.Background(), &DBContext{}, "t", map[string]any{"a": 1}, "id=? AND x=?", 1)
+	_, err = UpdateFromMap(context.Background(), &DBContext{}, "t", map[string]any{"a": 1}, "id=? AND x=?", 1)
 	if err == nil {
 		t.Fatalf("expected where placeholder mismatch error")
 	}
@@ -573,7 +573,7 @@ func TestUpdateFromMapContext_Success_ConvertsQuestionMarks(t *testing.T) {
 		},
 	}
 
-	ra, err := UpdateFromMapContext(context.Background(), dbctx, "t", map[string]any{
+	ra, err := UpdateFromMap(context.Background(), dbctx, "t", map[string]any{
 		"b": 2,
 		"a": 1,
 	}, "id=? AND org=?", 10, "o1")
@@ -597,15 +597,15 @@ func TestUpdateFromMapContext_Success_ConvertsQuestionMarks(t *testing.T) {
 }
 
 func TestDeleteByPrimaryKeyContext_Errors(t *testing.T) {
-	_, err := DeleteByPrimaryKeyContext(context.Background(), nil, "t", "id", 1)
+	_, err := DeleteByPrimaryKey(context.Background(), nil, "t", "id", 1)
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
-	_, err = DeleteByPrimaryKeyContext(context.Background(), &DBContext{}, "bad;table", "id", 1)
+	_, err = DeleteByPrimaryKey(context.Background(), &DBContext{}, "bad;table", "id", 1)
 	if err == nil {
 		t.Fatalf("expected bad table ident error")
 	}
-	_, err = DeleteByPrimaryKeyContext(context.Background(), &DBContext{}, "t", "bad;col", 1)
+	_, err = DeleteByPrimaryKey(context.Background(), &DBContext{}, "t", "bad;col", 1)
 	if err == nil {
 		t.Fatalf("expected bad col ident error")
 	}
@@ -623,26 +623,26 @@ func TestDeleteByPrimaryKeyContext_Success(t *testing.T) {
 			return resultOK{rows: 1, last: 0}, nil
 		},
 	}
-	ra, err := DeleteByPrimaryKeyContext(context.Background(), dbctx, "t", "id", 7)
+	ra, err := DeleteByPrimaryKey(context.Background(), dbctx, "t", "id", 7)
 	if err != nil || ra != 1 {
 		t.Fatalf("expected success, got ra=%d err=%v", ra, err)
 	}
 }
 
 func TestSoftDeleteByPrimaryKeyContext_Errors(t *testing.T) {
-	_, err := SoftDeleteByPrimaryKeyContext(context.Background(), nil, "t", "del", "id", 1)
+	_, err := SoftDeleteByPrimaryKey(context.Background(), nil, "t", "del", "id", 1)
 	if err == nil {
 		t.Fatalf("expected nil dbctx error")
 	}
-	_, err = SoftDeleteByPrimaryKeyContext(context.Background(), &DBContext{}, "bad;table", "del", "id", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), &DBContext{}, "bad;table", "del", "id", 1)
 	if err == nil {
 		t.Fatalf("expected bad table ident")
 	}
-	_, err = SoftDeleteByPrimaryKeyContext(context.Background(), &DBContext{}, "t", "bad;col", "id", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), &DBContext{}, "t", "bad;col", "id", 1)
 	if err == nil {
 		t.Fatalf("expected bad delete col ident")
 	}
-	_, err = SoftDeleteByPrimaryKeyContext(context.Background(), &DBContext{}, "t", "del", "bad;col", 1)
+	_, err = SoftDeleteByPrimaryKey(context.Background(), &DBContext{}, "t", "del", "bad;col", 1)
 	if err == nil {
 		t.Fatalf("expected bad pk col ident")
 	}
@@ -660,7 +660,7 @@ func TestSoftDeleteByPrimaryKeyContext_Success(t *testing.T) {
 			return resultOK{rows: 3, last: 0}, nil
 		},
 	}
-	ra, err := SoftDeleteByPrimaryKeyContext(context.Background(), dbctx, "t", "is_deleted", "id", 9)
+	ra, err := SoftDeleteByPrimaryKey(context.Background(), dbctx, "t", "is_deleted", "id", 9)
 	if err != nil || ra != 3 {
 		t.Fatalf("expected success ra=3, got ra=%d err=%v", ra, err)
 	}
@@ -845,7 +845,7 @@ func TestExecuteReadQueryContext_ColumnsAndScanHookErrors(t *testing.T) {
 	getReadColumnsHook = func(rows *sql.Rows) ([]string, error) {
 		return nil, errors.New("columns failed")
 	}
-	if _, err := ExecuteReadQueryContext(context.Background(), dbctx, ReadQueryInput{Query: "SELECT_OK"}); err == nil {
+	if _, err := ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{Query: "SELECT_OK"}); err == nil {
 		t.Fatalf("expected columns error")
 	}
 
@@ -853,7 +853,7 @@ func TestExecuteReadQueryContext_ColumnsAndScanHookErrors(t *testing.T) {
 	scanReadRowHook = func(rows *sql.Rows, dest ...any) error {
 		return errors.New("scan failed")
 	}
-	if _, err := ExecuteReadQueryContext(context.Background(), dbctx, ReadQueryInput{Query: "SELECT_OK"}); err == nil {
+	if _, err := ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{Query: "SELECT_OK"}); err == nil {
 		t.Fatalf("expected scan error")
 	}
 }
@@ -863,7 +863,7 @@ func TestMultiInsertFromStructsArrayContext_ErrorBranches(t *testing.T) {
 		ID int `db:"id"`
 	}
 
-	_, err := MultiInsertFromStructsArrayContext(context.Background(), &DBContext{}, "bad;table", []row{{ID: 1}})
+	_, err := MultiInsertFromStructsArray(context.Background(), &DBContext{}, "bad;table", []row{{ID: 1}})
 	if err == nil {
 		t.Fatalf("expected generate error")
 	}
@@ -873,7 +873,7 @@ func TestMultiInsertFromStructsArrayContext_ErrorBranches(t *testing.T) {
 			return nil, errors.New("exec fail")
 		},
 	}
-	_, err = MultiInsertFromStructsArrayContext(context.Background(), dbctx, "t", []row{{ID: 1}})
+	_, err = MultiInsertFromStructsArray(context.Background(), dbctx, "t", []row{{ID: 1}})
 	if err == nil {
 		t.Fatalf("expected exec error")
 	}
@@ -883,7 +883,7 @@ func TestMultiInsertFromStructsArrayContext_ErrorBranches(t *testing.T) {
 			return resultBadRowsAffected{}, nil
 		},
 	}
-	_, err = MultiInsertFromStructsArrayContext(context.Background(), dbctx, "t", []row{{ID: 1}})
+	_, err = MultiInsertFromStructsArray(context.Background(), dbctx, "t", []row{{ID: 1}})
 	if err == nil {
 		t.Fatalf("expected rows affected error")
 	}
@@ -938,7 +938,7 @@ func TestInsertFromStruct_Wrapper_And_PointerPath(t *testing.T) {
 		ID   int `db:"id"`
 		Name string
 	}
-	ra, id, err := InsertFromStruct(dbctx, "t", &row{ID: 1, Name: "n"})
+	ra, id, err := InsertFromStruct(context.Background(), dbctx, "t", &row{ID: 1, Name: "n"})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -956,11 +956,11 @@ func TestInsertFromStructContext_ErrorBranches(t *testing.T) {
 			return nil, errors.New("exec fail")
 		},
 	}
-	_, _, err := InsertFromStructContext(context.Background(), &DBContext{}, "t", badCol{ID: 1})
+	_, _, err := InsertFromStruct(context.Background(), &DBContext{}, "t", badCol{ID: 1})
 	if err == nil {
 		t.Fatalf("expected safeIdent error")
 	}
-	_, _, err = InsertFromStructContext(context.Background(), dbctx, "t", miRow{ID: 1})
+	_, _, err = InsertFromStruct(context.Background(), dbctx, "t", miRow{ID: 1})
 	if err == nil {
 		t.Fatalf("expected exec error")
 	}
@@ -972,7 +972,7 @@ func TestInsertFromMapContext_ExecAndLastInsertFallback(t *testing.T) {
 			return nil, errors.New("exec fail")
 		},
 	}
-	if _, _, err := InsertFromMapContext(context.Background(), dbctx, "t", map[string]any{"a": 1}); err == nil {
+	if _, _, err := InsertFromMap(context.Background(), dbctx, "t", map[string]any{"a": 1}); err == nil {
 		t.Fatalf("expected exec error")
 	}
 
@@ -981,7 +981,7 @@ func TestInsertFromMapContext_ExecAndLastInsertFallback(t *testing.T) {
 			return resultNoLastID{rows: 2}, nil
 		},
 	}
-	ra, id, err := InsertFromMapContext(context.Background(), dbctx, "t", map[string]any{"a": 1})
+	ra, id, err := InsertFromMap(context.Background(), dbctx, "t", map[string]any{"a": 1})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -996,13 +996,13 @@ func TestUpdateDeleteSoftDelete_ExecErrors(t *testing.T) {
 			return nil, errors.New("exec fail")
 		},
 	}
-	if _, err := UpdateFromMapContext(context.Background(), dbctx, "t", map[string]any{"a": 1}, "id=$1", 1); err == nil {
+	if _, err := UpdateFromMap(context.Background(), dbctx, "t", map[string]any{"a": 1}, "id=$1", 1); err == nil {
 		t.Fatalf("expected update exec error")
 	}
-	if _, err := DeleteByPrimaryKeyContext(context.Background(), dbctx, "t", "id", 1); err == nil {
+	if _, err := DeleteByPrimaryKey(context.Background(), dbctx, "t", "id", 1); err == nil {
 		t.Fatalf("expected delete exec error")
 	}
-	if _, err := SoftDeleteByPrimaryKeyContext(context.Background(), dbctx, "t", "is_deleted", "id", 1); err == nil {
+	if _, err := SoftDeleteByPrimaryKey(context.Background(), dbctx, "t", "is_deleted", "id", 1); err == nil {
 		t.Fatalf("expected soft delete exec error")
 	}
 }
@@ -1082,7 +1082,7 @@ func TestExecuteReadQuery_Wrapper_CallsContextVariant(t *testing.T) {
 
 	dbctx := &DBContext{Conn: &PostgresDb{DB: db}}
 
-	out, err := ExecuteReadQuery(dbctx, ReadQueryInput{
+	out, err := ExecuteReadQuery(context.Background(), dbctx, ReadQueryInput{
 		Query:             "SELECT_OK",
 		Params:            []any{1},
 		CapitaliseColumns: false,
@@ -1105,7 +1105,7 @@ func TestExecuteWriteQuery_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, id, err := ExecuteWriteQuery(dbctx, "UPDATE x", []any{1})
+	ra, id, err := ExecuteWriteQuery(context.Background(), dbctx, "UPDATE x", []any{1})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -1126,7 +1126,7 @@ func TestInsertFromMap_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, id, err := InsertFromMap(dbctx, "t", map[string]any{"b": 2, "a": 1})
+	ra, id, err := InsertFromMap(context.Background(), dbctx, "t", map[string]any{"b": 2, "a": 1})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -1153,7 +1153,7 @@ func TestUpdateFromMap_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, err := UpdateFromMap(dbctx, "t", map[string]any{"b": 2, "a": 1}, "id=?", 99)
+	ra, err := UpdateFromMap(context.Background(), dbctx, "t", map[string]any{"b": 2, "a": 1}, "id=?", 99)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -1179,7 +1179,7 @@ func TestDeleteByPrimaryKey_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, err := DeleteByPrimaryKey(dbctx, "t", "id", 123)
+	ra, err := DeleteByPrimaryKey(context.Background(), dbctx, "t", "id", 123)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -1201,7 +1201,7 @@ func TestSoftDeleteByPrimaryKey_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, err := SoftDeleteByPrimaryKey(dbctx, "t", "is_deleted", "id", 9)
+	ra, err := SoftDeleteByPrimaryKey(context.Background(), dbctx, "t", "is_deleted", "id", 9)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -1232,7 +1232,7 @@ func TestMultiInsertFromStructsArray_Wrapper_CallsContextVariant(t *testing.T) {
 		},
 	}
 
-	ra, err := MultiInsertFromStructsArray(dbctx, "t", []row{
+	ra, err := MultiInsertFromStructsArray(context.Background(), dbctx, "t", []row{
 		{ID: 0, Name: "a", M: meta{X: 1}}, // ID => DEFAULT
 		{ID: 7, Name: "b", M: meta{X: 2}}, // ID => $N
 	})

@@ -69,7 +69,7 @@ func TestConnect(t *testing.T) {
 		ConnectionPoolsize: 100,
 	})
 
-	_, err := Connect(&MongoDbConnector{}, "dummy")
+	_, err := Connect(context.Background(), &MongoDbConnector{}, "dummy")
 	assert.Nil(t, err)
 }
 
@@ -225,33 +225,33 @@ func Test_getConnectionTimeout(t *testing.T) {
 func TestConnectRejectsInvalidConfigAndNilConnector(t *testing.T) {
 	resetMongoGlobals()
 
-	if _, err := Connect(nil, "cluster"); err == nil {
+	if _, err := Connect(context.Background(), nil, "cluster"); err == nil {
 		t.Fatal("expected nil connector error")
 	}
 
 	SetConnectionConfig("bad", &ConnectionConfig{Hosts: []string{"localhost"}, ConnectionPoolsize: -1})
-	if _, err := Connect(&MongoDbConnector{}, "bad"); err == nil {
+	if _, err := Connect(context.Background(), &MongoDbConnector{}, "bad"); err == nil {
 		t.Fatal("expected invalid config error")
 	}
 }
 
-func TestConnectContextEdges(t *testing.T) {
+func TestConnectEdges(t *testing.T) {
 	resetMongoGlobals()
 
 	connector := &fakeMongoConnector{}
 	var nilCtx context.Context
-	client, err := ConnectContext(nilCtx, connector, "default")
+	client, err := Connect(nilCtx, connector, "default")
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
-	again, err := ConnectContext(context.Background(), connector, "default")
+	again, err := Connect(context.Background(), connector, "default")
 	require.NoError(t, err)
 	assert.Same(t, client, again)
 	assert.Equal(t, 1, connector.calls)
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	client, err = ConnectContext(cancelled, connector, "cancelled")
+	client, err = Connect(cancelled, connector, "cancelled")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
@@ -262,11 +262,11 @@ func TestConnectUsesSingletonAndNewInstanceHelpers(t *testing.T) {
 	SetConnectionConfig("singleton", &ConnectionConfig{Hosts: []string{"localhost:27017"}})
 	connector := &fakeMongoConnector{}
 
-	first, err := Connect(connector, "singleton")
+	first, err := Connect(context.Background(), connector, "singleton")
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	second, err := Connect(connector, "singleton")
+	second, err := Connect(context.Background(), connector, "singleton")
 	if err != nil {
 		t.Fatalf("connect again: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestConnectUsesSingletonAndNewInstanceHelpers(t *testing.T) {
 		t.Fatalf("expected one connect call, got %d", connector.calls)
 	}
 
-	if client, err := newInstance(&fakeMongoConnector{}, "unknown"); err != nil || client == nil {
+	if client, err := newInstance(context.Background(), &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}}); err != nil || client == nil {
 		t.Fatalf("expected default newInstance success, client=%#v err=%v", client, err)
 	}
 }
@@ -292,7 +292,7 @@ func TestConnectDoubleCheckAndNewInstanceErrors(t *testing.T) {
 		}
 		instances[clusterName] = existing
 	}
-	got, err := Connect(&fakeMongoConnector{}, "double-check")
+	got, err := Connect(context.Background(), &fakeMongoConnector{}, "double-check")
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -302,41 +302,32 @@ func TestConnectDoubleCheckAndNewInstanceErrors(t *testing.T) {
 
 	resetMongoGlobals()
 	SetConnectionConfig("connect-error", &ConnectionConfig{Hosts: []string{"localhost:27017"}})
-	if _, err := Connect(&fakeMongoConnector{err: errors.New("connect fail")}, "connect-error"); err == nil {
+	if _, err := Connect(context.Background(), &fakeMongoConnector{err: errors.New("connect fail")}, "connect-error"); err == nil {
 		t.Fatal("expected connect error")
 	}
 
-	SetConnectionConfig("bad-new-instance", &ConnectionConfig{Hosts: []string{"localhost:27017"}, ConnectionPoolsize: -1})
-	if _, err := newInstance(&fakeMongoConnector{}, "bad-new-instance"); err == nil {
+	if _, err := newInstance(context.Background(), &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}, ConnectionPoolsize: -1}); err == nil {
 		t.Fatal("expected invalid config error")
 	}
-	if _, err := newInstanceWithConfig(nil, &ConnectionConfig{Hosts: []string{"localhost:27017"}}); err == nil {
+	if _, err := newInstance(context.Background(), nil, &ConnectionConfig{Hosts: []string{"localhost:27017"}}); err == nil {
 		t.Fatal("expected nil connector error")
 	}
-	if _, err := newInstanceWithConfig(&fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}, ConnectionTimeout: -1}); err == nil {
+	if _, err := newInstance(context.Background(), &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}, ConnectionTimeout: -1}); err == nil {
 		t.Fatal("expected invalid config error")
 	}
 }
 
-func TestNewInstanceContextEdges(t *testing.T) {
+func TestNewInstanceEdges(t *testing.T) {
 	resetMongoGlobals()
 
 	var nilCtx context.Context
-	client, err := newInstanceContext(nilCtx, &fakeMongoConnector{}, "default")
+	client, err := newInstance(nilCtx, &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}})
 	require.NoError(t, err)
 	require.NotNil(t, client)
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	client, err = newInstanceContext(cancelled, &fakeMongoConnector{}, "default")
-	assert.Error(t, err)
-	assert.Nil(t, client)
-
-	client, err = newInstanceWithConfigContext(nilCtx, &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}})
-	require.NoError(t, err)
-	require.NotNil(t, client)
-
-	client, err = newInstanceWithConfigContext(cancelled, &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}})
+	client, err = newInstance(cancelled, &fakeMongoConnector{}, &ConnectionConfig{Hosts: []string{"localhost:27017"}})
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }

@@ -35,7 +35,7 @@ func TestInitTelemetry_DefaultOptions(t *testing.T) {
 		LoggerEndpoint: &RemoteEndpoint{Host: "localhost", Port: "4319", Insecure: true},
 	}
 
-	telemetryInstance, err := InitTelemetry(options)
+	telemetryInstance, err := InitTelemetry(context.Background(), options)
 	if err != nil {
 		t.Fatalf("InitTelemetry returned an error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestInitTelemetry_NoOpWithOLTP(t *testing.T) {
 		LoggerExporter: LoggerExporterOTLP,
 	}
 
-	telemetryInstance, err := InitTelemetry(options)
+	telemetryInstance, err := InitTelemetry(context.Background(), options)
 	if err != nil {
 		t.Fatalf("InitTelemetry returned an error: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestInitTelemetry_UnsupportedMeterExporter(t *testing.T) {
 		LoggerEndpoint: &RemoteEndpoint{Host: "localhost", Port: "4319", Insecure: true},
 	}
 
-	_, err := InitTelemetry(options)
+	_, err := InitTelemetry(context.Background(), options)
 	if err == nil {
 		t.Fatal("Expected error due to unsupported meter exporter, but got nil")
 	}
@@ -147,22 +147,22 @@ func TestInitTelemetry_InvalidResource(t *testing.T) {
 	testMutex.Lock()
 	defer testMutex.Unlock()
 
-	_, err := InitTelemetry(nil)
+	_, err := InitTelemetry(context.Background(), nil)
 	if err == nil {
 		t.Error("Expected error due to nil options, but got nil")
 	}
 
-	_, err = InitTelemetry(&Options{})
+	_, err = InitTelemetry(context.Background(), &Options{})
 	if err == nil {
 		t.Error("Expected error due to missing service name, but got nil")
 	}
 
-	_, err = InitTelemetry(&Options{ServiceName: "svc"})
+	_, err = InitTelemetry(context.Background(), &Options{ServiceName: "svc"})
 	if err == nil {
 		t.Error("Expected error due to missing environment, but got nil")
 	}
 
-	_, err = InitTelemetry(&Options{ServiceName: "svc", Environment: EnvDevelopment, SampleRate: 1.1})
+	_, err = InitTelemetry(context.Background(), &Options{ServiceName: "svc", Environment: EnvDevelopment, SampleRate: 1.1})
 	if err == nil {
 		t.Error("Expected error due to invalid sample rate, but got nil")
 	}
@@ -183,7 +183,7 @@ func TestInitTelemetry_TracerExporterError(t *testing.T) {
 		LoggerEndpoint: &RemoteEndpoint{Host: "", Port: "", Insecure: true}, // invalid endpoint
 	}
 
-	_, err := InitTelemetry(options)
+	_, err := InitTelemetry(context.Background(), options)
 	if err != nil {
 		t.Logf("InitTelemetry returned expected error: %v", err)
 	} else {
@@ -205,7 +205,7 @@ func TestInitTelemetry_MeterExporterError(t *testing.T) {
 		LoggerEndpoint: &RemoteEndpoint{Host: "localhost", Port: "4319", Insecure: true},
 	}
 
-	_, err := InitTelemetry(options)
+	_, err := InitTelemetry(context.Background(), options)
 	if err != nil {
 		t.Logf("InitTelemetry returned expected error: %v", err)
 	} else {
@@ -227,7 +227,7 @@ func TestInitTelemetry_LoggerExporterError(t *testing.T) {
 		LoggerEndpoint: nil,
 	}
 
-	_, err := InitTelemetry(options)
+	_, err := InitTelemetry(context.Background(), options)
 	if err != nil {
 		t.Logf("InitTelemetry returned expected error: %v", err)
 	} else {
@@ -339,7 +339,7 @@ func TestInitTelemetry_UnsupportedTracerExporter(t *testing.T) {
 		MeterEndpoint:  &RemoteEndpoint{Host: "localhost", Port: "4319", Insecure: true},
 	}
 
-	_, err := InitTelemetry(options)
+	_, err := InitTelemetry(context.Background(), options)
 	if err == nil {
 		t.Fatal("Expected error due to unsupported tracer exporter, but got nil")
 	}

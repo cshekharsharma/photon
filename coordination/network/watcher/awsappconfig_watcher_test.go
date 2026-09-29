@@ -121,6 +121,64 @@ func TestWatch_SuccessfulUpdate(t *testing.T) {
 	}
 }
 
+func TestNewAwsAppConfigWatcher_Defaults(t *testing.T) {
+	w := NewAwsAppConfigWatcher(nil, "file:///tmp/config.json")
+	if w == nil || w.watcherOptions == nil {
+		t.Fatal("expected watcher with default options")
+	}
+	if w.watcherOptions.Logger == nil {
+		t.Fatal("expected default logger")
+	}
+
+	w = NewAwsAppConfigWatcher(&WatcherOptions{}, "file:///tmp/config.json")
+	if w.watcherOptions.Logger == nil {
+		t.Fatal("expected nil logger to be defaulted")
+	}
+}
+
+func TestWatch_GuardRails(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	var nilWatcher *AwsAppConfigWatcher
+	nilWatcher.Watch(context.Background())
+
+	buff := &bytes.Buffer{}
+	w := NewAwsAppConfigWatcher(&WatcherOptions{
+		Logger: getConsoleLogger("InvalidOptions", buff),
+	}, "file:///tmp/config.json")
+	w.Watch(context.Background())
+	if !strings.Contains(buff.String(), "invalid watcher options") {
+		t.Fatalf("expected invalid options log, got: %s", buff.String())
+	}
+
+	buff.Reset()
+	w = NewAwsAppConfigWatcher(&WatcherOptions{
+		Application:  "app",
+		Environment:  "dev",
+		ContentScope: "profile",
+		ClientID:     "client",
+		Logger:       getConsoleLogger("CanceledContext", buff),
+	}, "file:///tmp/config.json")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	w.Watch(ctx)
+	if !strings.Contains(buff.String(), "context cancelled") {
+		t.Fatalf("expected canceled context log, got: %s", buff.String())
+	}
+
+	var gotCtx context.Context
+	mockAppConfigServiceInstance.watchFn = func(ctx context.Context, input *appconfig.WatchConfigInput, cb func(*appconfig.FetchConfigResult)) error {
+		gotCtx = ctx
+		return nil
+	}
+	var nilCtx context.Context
+	w.Watch(nilCtx)
+	if gotCtx == nil {
+		t.Fatal("expected nil context to be normalized")
+	}
+}
+
 func TestWatch_ServiceError(t *testing.T) {
 	defer teardown()
 	called := false
@@ -193,6 +251,14 @@ func TestOnContentUpdate_NilResult(t *testing.T) {
 	}
 }
 
+func TestOnContentUpdate_NilWatcher(t *testing.T) {
+	var nilWatcher *AwsAppConfigWatcher
+	nilWatcher.OnContentUpdate(&appconfig.FetchConfigResult{Content: "ignored"})
+
+	w := &AwsAppConfigWatcher{}
+	w.OnContentUpdate(&appconfig.FetchConfigResult{Content: "ignored"})
+}
+
 func TestOnContentUpdate_EmptyContent(t *testing.T) {
 	setup(t)
 	defer teardown()
@@ -240,5 +306,65 @@ func TestOnContentUpdate_UsesOwnedUpdateChannel(t *testing.T) {
 	defer pushMutex.Unlock()
 	if pushCalled {
 		t.Fatal("expected global update channel not to be used")
+	}
+}
+
+func TestOnContentUpdate_FullOwnedUpdateChannelDoesNotBlock(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	buff := &bytes.Buffer{}
+	updateCh := make(chan *UpdaterSchema, 1)
+	updateCh <- &UpdaterSchema{Content: "old"}
+	w := NewAwsAppConfigWatcher(&WatcherOptions{
+		ContentSource: 7,
+		ContentFormat: 8,
+		UpdateChannel: updateCh,
+		Logger:        getConsoleLogger("FullUpdateChannel", buff),
+	}, "file:///tmp/config.json")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		w.OnContentUpdate(&appconfig.FetchConfigResult{Content: "new"})
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("OnContentUpdate blocked on full channel")
+	}
+	if !strings.Contains(buff.String(), "update channel full") {
+		t.Fatalf("expected full channel warning, got: %s", buff.String())
+	}
+}
+
+func TestAwsAppConfigWatcherValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		opts WatcherOptions
+		want string
+	}{
+		{name: "missing application", opts: WatcherOptions{}, want: "application is required"},
+		{name: "missing environment", opts: WatcherOptions{Application: "app"}, want: "environment is required"},
+		{name: "missing content scope", opts: WatcherOptions{Application: "app", Environment: "dev"}, want: "content scope is required"},
+		{name: "missing client id", opts: WatcherOptions{Application: "app", Environment: "dev", ContentScope: "profile"}, want: "client ID is required"},
+		{name: "valid", opts: WatcherOptions{Application: "app", Environment: "dev", ContentScope: "profile", ClientID: "client"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := NewAwsAppConfigWatcher(&tt.opts, "file:///tmp/config.json")
+			err := w.validate()
+			if tt.want == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || err.Error() != tt.want {
+				t.Fatalf("expected %q, got %v", tt.want, err)
+			}
+		})
 	}
 }

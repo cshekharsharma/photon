@@ -74,11 +74,7 @@ type Publisher struct {
 	options PublisherOptions
 }
 
-func NewPublisher(mq cloudcontract.MessageQueueInterface, queues QueueConfig) (*Publisher, error) {
-	return NewPublisherWithOptions(mq, queues, PublisherOptions{})
-}
-
-func NewPublisherWithOptions(mq cloudcontract.MessageQueueInterface, queues QueueConfig, opts PublisherOptions) (*Publisher, error) {
+func NewPublisher(mq cloudcontract.MessageQueueInterface, queues QueueConfig, opts PublisherOptions) (*Publisher, error) {
 	if mq == nil {
 		return nil, fmt.Errorf("message queue is required")
 	}

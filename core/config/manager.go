@@ -119,7 +119,7 @@ func (m *Manager) startWatcherLocked(cfg Config) {
 	opts.WatchContext = ctx
 
 	if koanfCfg, ok := cfg.(*Koanf); ok {
-		go koanfCfg.watchUpdaterChannelContext(ctx)
+		go koanfCfg.watchUpdaterChannel(ctx)
 	}
 
 	w := watcher.NewAwsAppConfigWatcher(opts, string(m.options.Source))

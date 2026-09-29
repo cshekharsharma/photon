@@ -8,11 +8,7 @@ import (
 
 // monitorWorkers listens for crashed or failed workers on a channel,
 // and restarts them automatically.
-func monitorWorkers() {
-	monitorWorkersWithContext(context.Background())
-}
-
-func monitorWorkersWithContext(ctx context.Context) {
+func monitorWorkers(ctx context.Context) {
 	ticker := time.NewTicker(GetWorkerWatchdogInterval())
 	defer ticker.Stop()
 
@@ -54,7 +50,7 @@ func monitorWorkersWithContext(ctx context.Context) {
 			workerlogger.Warn("[WorkerOverseer] Worker %s (id=%s) reported failure. Restarting...",
 				failedWorker.GetWorkerName(), failedWorker.GetWorkerId())
 
-			scheduleWorkerRestartWithContext(ctx, cfg, failedWorker)
+			scheduleWorkerRestart(ctx, cfg, failedWorker)
 
 		case <-ticker.C:
 			checkWorkerHeartbeats(ctx)
@@ -91,7 +87,7 @@ func checkWorkerHeartbeats(ctx context.Context) {
 		})
 		workerlogger.Error("[WorkerOverseer] Worker %s (id=%s) missed heartbeat. Restarting.",
 			state.worker.GetWorkerName(), state.runtime.WorkerID())
-		scheduleWorkerRestartWithContext(ctx, state.cfg, state.worker)
+		scheduleWorkerRestart(ctx, state.cfg, state.worker)
 	}
 }
 

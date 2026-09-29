@@ -63,11 +63,7 @@ func NewMemcachedCache(opts *Options, connector memcached.MemcachedConnectorInte
 
 // Exists checks if a given key exists in the cache.
 // Returns true if the key is found, false otherwise.
-func (c *MemcachedCache) Exists(request *ExistsRequest) (bool, error) {
-	return c.ExistsContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) ExistsContext(ctx context.Context, request *ExistsRequest) (bool, error) {
+func (c *MemcachedCache) Exists(ctx context.Context, request *ExistsRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -88,11 +84,7 @@ func (c *MemcachedCache) ExistsContext(ctx context.Context, request *ExistsReque
 
 // Get retrieves the value associated with a given key.
 // Returns nil if the key is not found.
-func (c *MemcachedCache) Get(request *GetRequest) (any, error) {
-	return c.GetContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) GetContext(ctx context.Context, request *GetRequest) (any, error) {
+func (c *MemcachedCache) Get(ctx context.Context, request *GetRequest) (any, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -113,11 +105,7 @@ func (c *MemcachedCache) GetContext(ctx context.Context, request *GetRequest) (a
 
 // Set stores a value in the cache with optional TTL expiration.
 // Returns true if the operation succeeds.
-func (c *MemcachedCache) Set(request *SetRequest) (bool, error) {
-	return c.SetContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) SetContext(ctx context.Context, request *SetRequest) (bool, error) {
+func (c *MemcachedCache) Set(ctx context.Context, request *SetRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -145,11 +133,7 @@ func (c *MemcachedCache) SetContext(ctx context.Context, request *SetRequest) (b
 
 // Delete removes a key from the cache.
 // Returns true if the key was successfully deleted.
-func (c *MemcachedCache) Delete(request *DeleteRequest) (bool, error) {
-	return c.DeleteContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) DeleteContext(ctx context.Context, request *DeleteRequest) (bool, error) {
+func (c *MemcachedCache) Delete(ctx context.Context, request *DeleteRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -166,11 +150,7 @@ func (c *MemcachedCache) DeleteContext(ctx context.Context, request *DeleteReque
 
 // MultiGet retrieves multiple values for a list of keys.
 // Returns a map of keys to values, missing keys will be absent.
-func (c *MemcachedCache) MultiGet(request *MultiGetRequest) (map[string]any, error) {
-	return c.MultiGetContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) MultiGetContext(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
+func (c *MemcachedCache) MultiGet(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -199,11 +179,7 @@ func (c *MemcachedCache) MultiGetContext(ctx context.Context, request *MultiGetR
 
 // MultiSet sets multiple key-value pairs into the cache in batch.
 // Returns a map of success status per key.
-func (c *MemcachedCache) MultiSet(request *MultiSetRequest) (map[string]bool, error) {
-	return c.MultiSetContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) MultiSetContext(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
+func (c *MemcachedCache) MultiSet(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -243,11 +219,7 @@ func (c *MemcachedCache) MultiSetContext(ctx context.Context, request *MultiSetR
 
 // MultiDelete deletes multiple keys from the cache.
 // Returns a map of success status per key.
-func (c *MemcachedCache) MultiDelete(request *MultiDeleteRequest) (map[string]bool, error) {
-	return c.MultiDeleteContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) MultiDeleteContext(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
+func (c *MemcachedCache) MultiDelete(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -273,11 +245,7 @@ func (c *MemcachedCache) MultiDeleteContext(ctx context.Context, request *MultiD
 
 // Increment atomically increases a key's numeric value by the specified amount.
 // Returns an error if the operation fails or key doesn't exist.
-func (c *MemcachedCache) Increment(request *IncrementRequest) error {
-	return c.IncrementContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) IncrementContext(ctx context.Context, request *IncrementRequest) error {
+func (c *MemcachedCache) Increment(ctx context.Context, request *IncrementRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -298,11 +266,7 @@ func (c *MemcachedCache) IncrementContext(ctx context.Context, request *Incremen
 
 // Decrement atomically decreases a key's numeric value by the specified amount.
 // Returns an error if the operation fails or key doesn't exist.
-func (c *MemcachedCache) Decrement(request *DecrementRequest) error {
-	return c.DecrementContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) DecrementContext(ctx context.Context, request *DecrementRequest) error {
+func (c *MemcachedCache) Decrement(ctx context.Context, request *DecrementRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -323,11 +287,7 @@ func (c *MemcachedCache) DecrementContext(ctx context.Context, request *Decremen
 
 // Append appends the given value to an existing key's value.
 // Returns an error if the key does not exist or append fails.
-func (c *MemcachedCache) Append(request *AppendRequest) error {
-	return c.AppendContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) AppendContext(ctx context.Context, request *AppendRequest) error {
+func (c *MemcachedCache) Append(ctx context.Context, request *AppendRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -353,11 +313,7 @@ func (c *MemcachedCache) AppendContext(ctx context.Context, request *AppendReque
 
 // GetTTL is not supported in Memcached.
 // Always returns an error indicating unsupported operation.
-func (c *MemcachedCache) GetTTL(request *GetTTLRequest) (int64, error) {
-	return c.GetTTLContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) GetTTLContext(ctx context.Context, request *GetTTLRequest) (int64, error) {
+func (c *MemcachedCache) GetTTL(ctx context.Context, request *GetTTLRequest) (int64, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return 0, err
 	}
@@ -367,11 +323,7 @@ func (c *MemcachedCache) GetTTLContext(ctx context.Context, request *GetTTLReque
 
 // SetTTL updates the expiration time (TTL) of an existing key.
 // Internally uses the Memcached Touch() operation.
-func (c *MemcachedCache) SetTTL(request *SetTTLRequest) error {
-	return c.SetTTLContext(context.Background(), request)
-}
-
-func (c *MemcachedCache) SetTTLContext(ctx context.Context, request *SetTTLRequest) error {
+func (c *MemcachedCache) SetTTL(ctx context.Context, request *SetTTLRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}

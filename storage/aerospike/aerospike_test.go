@@ -250,15 +250,11 @@ func TestRegistryHardening(t *testing.T) {
 		assert.Nil(t, conn)
 		assert.Error(t, err)
 
-		conn, err = newInstance(nil, "nil-config")
+		conn, err = newInstance(nil, &ConnectionConfig{})
 		assert.Nil(t, conn)
 		assert.Error(t, err)
 
-		conn, err = newInstanceWithConfig(nil, &ConnectionConfig{})
-		assert.Nil(t, conn)
-		assert.Error(t, err)
-
-		conn, err = newInstanceWithConfig(connector, nil)
+		conn, err = newInstance(connector, nil)
 		assert.Nil(t, conn)
 		assert.Error(t, err)
 	})
@@ -372,11 +368,11 @@ func TestRegistryHardening(t *testing.T) {
 			return wp != nil && wp.Expiration == 33
 		})).Return(mockedAero, nil).Once()
 
-		conn, err := newInstance(connector, cluster)
+		conn, err := newInstance(connector, GetConnectionConfig(cluster))
 		assert.NoError(t, err)
 		assert.Equal(t, mockedAero, conn)
 
-		conn, err = newInstance(connector, "missing")
+		conn, err = newInstance(connector, GetConnectionConfig("missing"))
 		assert.Nil(t, conn)
 		assert.Error(t, err)
 	})

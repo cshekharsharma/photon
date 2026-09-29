@@ -165,7 +165,7 @@ func Connect(connector AerospikeConnectorInterface, clusterName string) (Aerospi
 		return nil, fmt.Errorf("connection config for cluster '%s' not set", clusterName)
 	}
 
-	newConn, err := newInstanceWithConfig(connector, config)
+	newConn, err := newInstance(connector, config)
 	if err != nil {
 		return nil, err
 	}
@@ -174,22 +174,7 @@ func Connect(connector AerospikeConnectorInterface, clusterName string) (Aerospi
 	return newConn, nil
 }
 
-// newInstance creates a new Aerospike client connection instance for a
-// specified cluster using configurations derived from the cluster name.
-// The connection is established based on a list of seed nodes retrieved
-// for the specified cluster. The function also sets a connection timeout
-// and, if the client is successfully created, sets its default write policy.
-func newInstance(connector AerospikeConnectorInterface, clusterName string) (AerospikeInterface, error) {
-	mutex.RLock()
-	config := cloneConnectionConfig(connectionConfigMap[clusterName])
-	mutex.RUnlock()
-	if config == nil {
-		return nil, fmt.Errorf("connection config for cluster '%s' not set", clusterName)
-	}
-	return newInstanceWithConfig(connector, config)
-}
-
-func newInstanceWithConfig(connector AerospikeConnectorInterface, config *ConnectionConfig) (AerospikeInterface, error) {
+func newInstance(connector AerospikeConnectorInterface, config *ConnectionConfig) (AerospikeInterface, error) {
 	if connector == nil {
 		return nil, fmt.Errorf("aerospike: connector is required")
 	}

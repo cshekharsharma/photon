@@ -17,6 +17,9 @@ import (
 var (
 	// ErrMaxRetriesExceeded is returned when all retry attempts have been exhausted.
 	ErrMaxRetriesExceeded = errors.New("max retries exceeded")
+	ErrNilBackoff         = errors.New("backoff cannot be nil")
+	ErrNilContext         = errors.New("context cannot be nil")
+	ErrNilFunction        = errors.New("retry function cannot be nil")
 
 	MinimumDelay        = 100 * time.Millisecond // Default minimum delay for backoff
 	MaximumDelay        = 10 * time.Second       // Default maximum delay for backoff
@@ -156,7 +159,53 @@ func NewBackoff(opts ...Option) *Backoff {
 		opt(b)
 	}
 
+	b.normalize()
 	return b
+}
+
+func (b *Backoff) normalize() {
+	if b.MinDelay <= 0 {
+		b.MinDelay = MinimumDelay
+	}
+	if b.MaxDelay <= 0 {
+		b.MaxDelay = MaximumDelay
+	}
+	if b.MaxDelay < b.MinDelay {
+		b.MaxDelay = b.MinDelay
+	}
+	if b.MaxRetries < 0 {
+		b.MaxRetries = 0
+	}
+	if b.Factor <= 1 {
+		b.Factor = ExponentialFactor
+	}
+	if b.PerAttemptTimeout < 0 {
+		b.PerAttemptTimeout = 0
+	}
+}
+
+// RetryTransient retries ordinary errors while respecting caller cancellation.
+func RetryTransient(err error) bool {
+	return err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded)
+}
+
+// RetryIfErrorIs retries errors matching target.
+func RetryIfErrorIs(target error) RetryPredicate {
+	return func(err error) bool {
+		return errors.Is(err, target)
+	}
+}
+
+// RetryIfAny retries when any predicate marks the error retryable.
+func RetryIfAny(predicates ...RetryPredicate) RetryPredicate {
+	return func(err error) bool {
+		for _, predicate := range predicates {
+			if predicate != nil && predicate(err) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // getDelay computes the delay for a given retry attempt using exponential backoff logic.
@@ -228,6 +277,16 @@ func (b *Backoff) randFloat() float64 {
 //	}
 //	fmt.Println(val)
 func (b *Backoff) Retry(ctx context.Context, fn func(context.Context, ...any) (any, error), args ...any) (any, error) {
+	if b == nil {
+		return nil, ErrNilBackoff
+	}
+	if ctx == nil {
+		return nil, ErrNilContext
+	}
+	if fn == nil {
+		return nil, ErrNilFunction
+	}
+
 	for attempt := 0; attempt <= b.MaxRetries; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err

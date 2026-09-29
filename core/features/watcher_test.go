@@ -58,7 +58,7 @@ func Test_watchUpdaterChannel_FileWriteAndReload(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchUpdaterChannelContext(ctx, opts)
+		watchUpdaterChannel(ctx, opts)
 	}()
 	defer func() {
 		cancel()
@@ -117,7 +117,7 @@ func Test_watchUpdaterChannel_RawBytesWorkflow(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchUpdaterChannelContext(ctx, opts)
+		watchUpdaterChannel(ctx, opts)
 	}()
 	defer func() {
 		cancel()
@@ -176,7 +176,7 @@ func Test_watchUpdaterChannel_RecoveryBlock(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchUpdaterChannelContext(ctx, opts)
+		watchUpdaterChannel(ctx, opts)
 	}()
 	defer func() {
 		cancel()
@@ -223,7 +223,7 @@ func Test_watchUpdaterChannel_FileWriteError(t *testing.T) {
 	}
 	close(ch)
 
-	watchUpdaterChannel(opts)
+	watchUpdaterChannel(context.Background(), opts)
 	assert.False(t, callbackCalled)
 }
 
@@ -256,6 +256,6 @@ func Test_watchUpdaterChannel_InitError(t *testing.T) {
 	}
 	close(ch)
 
-	watchUpdaterChannel(opts)
+	watchUpdaterChannel(context.Background(), opts)
 	assert.False(t, callbackCalled)
 }

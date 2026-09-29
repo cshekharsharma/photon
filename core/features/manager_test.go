@@ -150,7 +150,7 @@ func TestLegacyFeatureWatcherNilContext(t *testing.T) {
 	close(ch)
 
 	var nilCtx context.Context
-	watchUpdaterChannelContext(nilCtx, &InitOptions{
+	watchUpdaterChannel(nilCtx, &InitOptions{
 		WatcherOptions: &watcher.WatcherOptions{
 			UpdateChannel: ch,
 			Logger:        testFeatureLogger("legacy-watch-nil-context"),

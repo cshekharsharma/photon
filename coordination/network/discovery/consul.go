@@ -67,6 +67,9 @@ func (r *realConsulClient) Health() healthInterface {
 //   - ServiceDiscovery: A fully initialized instance of the Consul-based discovery system.
 //   - error: Any error encountered while creating the Consul client.
 func NewConsulDiscovery(opts *Options) (ServiceDiscovery, error) {
+	if opts == nil {
+		return nil, errors.New("options are required")
+	}
 	consulCfg := populateConsulConfig(opts)
 
 	client, err := api.NewClient(consulCfg)
@@ -78,7 +81,7 @@ func NewConsulDiscovery(opts *Options) (ServiceDiscovery, error) {
 		client: &realConsulClient{
 			c: client,
 		},
-		logger:                  opts.Logger,
+		logger:                  discoveryLogger(opts.Logger),
 		watchIterationSleepTime: watchIterationSleepTime,
 		watchBlockingWaitTime:   watchBlockingWaitTime,
 	}
@@ -98,6 +101,10 @@ func NewConsulDiscovery(opts *Options) (ServiceDiscovery, error) {
 // Returns:
 //   - error: If registration or TTL updates fail.
 func (c *consulDiscovery) Register(ctx context.Context, instance *ServiceInstance) error {
+	ctx = normalizeDiscoveryContext(ctx)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if instance == nil {
 		return errors.New("service instance cannot be nil")
 	}
@@ -130,17 +137,17 @@ func (c *consulDiscovery) Register(ctx context.Context, instance *ServiceInstanc
 		for {
 			select {
 			case <-ctx.Done():
-				c.logger.Warn("context done, deregistering service %s", instance.ID)
+				c.log().Warn("context done, deregistering service %s", instance.ID)
 				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultDeregisterTimeout)
 				if err := c.Deregister(cleanupCtx, instance.ID); err != nil {
-					c.logger.Error("failed to deregister service %s: %v", instance.ID, err)
+					c.log().Error("failed to deregister service %s: %v", instance.ID, err)
 				}
 				cancel()
 				return
 			case <-ticker.C:
 				ttlErr := c.client.Agent().UpdateTTL("service:"+instance.ID, api.HealthPassing, api.HealthPassing)
 				if ttlErr != nil {
-					c.logger.Error("failed to update TTL for service %s: %v", instance.ID, ttlErr)
+					c.log().Error("failed to update TTL for service %s: %v", instance.ID, ttlErr)
 				}
 			}
 		}
@@ -158,6 +165,10 @@ func (c *consulDiscovery) Register(ctx context.Context, instance *ServiceInstanc
 // Returns:
 //   - error: If deregistration fails.
 func (c *consulDiscovery) Deregister(ctx context.Context, instanceID string) error {
+	ctx = normalizeDiscoveryContext(ctx)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if instanceID == "" {
 		return errors.New("service instance ID cannot be empty")
 	}
@@ -169,14 +180,14 @@ func (c *consulDiscovery) Deregister(ctx context.Context, instanceID string) err
 
 	select {
 	case <-ctx.Done():
-		c.logger.Error("failed to deregister service %s: %v", instanceID, ctx.Err())
+		c.log().Error("failed to deregister service %s: %v", instanceID, ctx.Err())
 		return fmt.Errorf("failed to deregister service %s: %w", instanceID, ctx.Err())
 	case err := <-errCh:
 		if err == nil {
-			c.logger.Info("successfully deregistered service %s", instanceID)
+			c.log().Info("successfully deregistered service %s", instanceID)
 			return nil
 		}
-		c.logger.Error("failed to deregister service %s: %v", instanceID, err)
+		c.log().Error("failed to deregister service %s: %v", instanceID, err)
 		return fmt.Errorf("failed to deregister service %s: %w", instanceID, err)
 	}
 }
@@ -191,17 +202,24 @@ func (c *consulDiscovery) Deregister(ctx context.Context, instanceID string) err
 //   - []*ServiceInstance: A list of discovered healthy instances.
 //   - error: If discovery fails.
 func (c *consulDiscovery) Discover(ctx context.Context, serviceName string) ([]*ServiceInstance, error) {
+	ctx = normalizeDiscoveryContext(ctx)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if serviceName == "" {
 		return nil, errors.New("service name cannot be empty")
 	}
 
-	services, _, err := c.client.Health().Service(serviceName, "", true, &api.QueryOptions{})
+	services, _, err := c.client.Health().Service(serviceName, "", true, (&api.QueryOptions{}).WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover service %s: %w", serviceName, err)
 	}
 
 	var instances []*ServiceInstance
 	for _, s := range services {
+		if s.Service == nil {
+			continue
+		}
 		instances = append(instances, &ServiceInstance{
 			ID:       s.Service.ID,
 			Name:     s.Service.Service,
@@ -227,6 +245,10 @@ func (c *consulDiscovery) Discover(ctx context.Context, serviceName string) ([]*
 // Returns:
 //   - error: If setup fails (watch runs independently).
 func (c *consulDiscovery) Watch(ctx context.Context, serviceName string, onChange func([]*ServiceInstance)) error {
+	ctx = normalizeDiscoveryContext(ctx)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if serviceName == "" {
 		return errors.New("service name cannot be empty")
 	}
@@ -239,16 +261,22 @@ func (c *consulDiscovery) Watch(ctx context.Context, serviceName string, onChang
 		for {
 			select {
 			case <-ctx.Done():
-				c.logger.Info("watch stopped for service %s", serviceName)
+				c.log().Info("watch stopped for service %s", serviceName)
 				return
 			default:
-				entries, meta, err := c.client.Health().Service(serviceName, "", true, &api.QueryOptions{
+				query := (&api.QueryOptions{
 					WaitIndex: lastIndex,
 					WaitTime:  c.watchWaitTime(),
-				})
+				}).WithContext(ctx)
+				entries, meta, err := c.client.Health().Service(serviceName, "", true, query)
 				if err != nil {
-					c.logger.Warn("watch error for %s: %v", serviceName, err)
-					time.Sleep(c.watchSleepTime())
+					if ctx.Err() != nil {
+						return
+					}
+					c.log().Warn("watch error for %s: %v", serviceName, err)
+					if !sleepWithContext(ctx, c.watchSleepTime()) {
+						return
+					}
 					continue
 				}
 
@@ -275,7 +303,7 @@ func (c *consulDiscovery) Watch(ctx context.Context, serviceName string, onChang
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							c.logger.Error("panic in onChange handler for %s: %v", serviceName, r)
+							c.log().Error("panic in onChange handler for %s: %v", serviceName, r)
 						}
 					}()
 					onChange(instances)
@@ -306,6 +334,46 @@ func (c *consulDiscovery) watchSleepTime() time.Duration {
 		return c.watchIterationSleepTime
 	}
 	return watchIterationSleepTime
+}
+
+func (c *consulDiscovery) log() logger.Logger {
+	if c != nil && c.logger != nil {
+		return c.logger
+	}
+	return discoveryLogger(nil)
+}
+
+func discoveryLogger(l logger.Logger) logger.Logger {
+	if l != nil {
+		return l
+	}
+	return logger.Init(&logger.LoggerConfig{
+		Name:     "photon-discovery",
+		Provider: logger.LoggerProviderZerolog,
+		Type:     logger.LoggerTypeStdout,
+	})
+}
+
+func normalizeDiscoveryContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) bool {
+	if d <= 0 {
+		return true
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 // populateConsulConfig populates the Consul configuration based on the provided options.

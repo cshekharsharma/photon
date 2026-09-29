@@ -24,7 +24,7 @@ func PublishNotification(mq cloudcontract.MessageQueueInterface) error {
 		Level:    logger.LogLevelInfo,
 	})
 
-	publisher, err := notifyrclient.NewPublisherWithOptions(
+	publisher, err := notifyrclient.NewPublisher(
 		mq,
 		notifyrclient.QueueConfig{
 			EmailHighPriorityURL: "https://sqs.ap-south-1.amazonaws.com/123/email-high.fifo",

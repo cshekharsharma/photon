@@ -95,14 +95,10 @@ func (r *Redis) Close() error {
 //     failures. It returns nil if the connection was successful.
 //
 // Note: This method is thread-safe and uses mutexes to handle concurrent access.
-func Connect(connector RedisConnectorInterface, serverName string) (RedisInterface, error) {
-	return ConnectContext(context.Background(), connector, serverName)
-}
-
-// ConnectContext establishes or reuses a Redis connection for serverName.
+// Connect establishes or reuses a Redis connection for serverName.
 // The context is checked before creating a new connection so startup callers can
 // bind connection acquisition to their own cancellation/deadline policy.
-func ConnectContext(ctx context.Context, connector RedisConnectorInterface, serverName string) (RedisInterface, error) {
+func Connect(ctx context.Context, connector RedisConnectorInterface, serverName string) (RedisInterface, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}

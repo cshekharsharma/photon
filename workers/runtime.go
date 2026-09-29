@@ -53,11 +53,7 @@ func (ctx *workerRunContext) LastHeartbeat() time.Time {
 
 // startAllWorkers initializes and launches all workers based on their configuration.
 // Each worker is launched in its own goroutine.
-func startAllWorkers() {
-	startAllWorkersWithContext(context.Background())
-}
-
-func startAllWorkersWithContext(ctx context.Context) {
+func startAllWorkers(ctx context.Context) {
 	ctx = normalizeOverseerContext(ctx)
 	for _, cfg := range workerList {
 		select {
@@ -81,16 +77,12 @@ func startAllWorkersWithContext(ctx context.Context) {
 			default:
 			}
 			workerlogger.Info("[WorkerOverseer] Launching worker: %s (%d/%d)", cfg.Name, i+1, cfg.MaxCount)
-			launchWorkerFromConfigWithContext(ctx, cfg)
+			launchWorkerFromConfig(ctx, cfg)
 		}
 	}
 }
 
-func launchWorkerFromConfig(cfg *WorkerConfig) {
-	launchWorkerFromConfigWithContext(context.Background(), cfg)
-}
-
-func launchWorkerFromConfigWithContext(ctx context.Context, cfg *WorkerConfig) {
+func launchWorkerFromConfig(ctx context.Context, cfg *WorkerConfig) {
 	ctx = normalizeOverseerContext(ctx)
 	if cfg == nil {
 		workerlogger.Error("[WorkerOverseer] launchWorkerFromConfig called with nil config")
@@ -100,7 +92,7 @@ func launchWorkerFromConfigWithContext(ctx context.Context, cfg *WorkerConfig) {
 	worker, err := cfg.NewWorker()
 	if err != nil {
 		workerlogger.Error("[WorkerOverseer] Failed creating worker name=%s: %v", cfg.Name, err)
-		scheduleWorkerRestartWithContext(ctx, cfg, nil)
+		scheduleWorkerRestart(ctx, cfg, nil)
 		return
 	}
 

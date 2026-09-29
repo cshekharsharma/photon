@@ -236,7 +236,7 @@ func TestComposeKeyVariants(t *testing.T) {
 
 func TestExistsNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.Exists(nil); err == nil {
+	if _, err := c.Exists(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil ExistsRequest")
 	}
 }
@@ -250,7 +250,7 @@ func TestExistsHappyPath(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Exists(req)
+	ok, err := c.Exists(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestExistsComposeKeyError(t *testing.T) {
 	req := &ExistsRequest{Key: "k"}
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
-	_, err := c.Exists(req)
+	_, err := c.Exists(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -285,7 +285,7 @@ func TestExistsStoreError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.Exists(req)
+	_, err := c.Exists(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -293,7 +293,7 @@ func TestExistsStoreError(t *testing.T) {
 
 func TestGetNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.Get(nil); err == nil {
+	if _, err := c.Get(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil GetRequest")
 	}
 }
@@ -305,7 +305,7 @@ func TestGetComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.Get(req)
+	_, err := c.Get(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for empty key")
 	}
@@ -320,7 +320,7 @@ func TestGetStoreError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.Get(req)
+	_, err := c.Get(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected store error")
 	}
@@ -335,7 +335,7 @@ func TestGetNoFieldFiltering(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	val, err := c.Get(req)
+	val, err := c.Get(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestGetWithFieldFilteringMapValue(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	val, err := c.Get(req)
+	val, err := c.Get(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestGetWithFieldFilteringNonMapValue(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	val, err := c.Get(req)
+	val, err := c.Get(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -393,7 +393,7 @@ func TestGetWithFieldFilteringNonMapValue(t *testing.T) {
 
 func TestSetNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.Set(nil); err == nil {
+	if _, err := c.Set(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil SetRequest")
 	}
 }
@@ -405,7 +405,7 @@ func TestSetComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.Set(req)
+	_, err := c.Set(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for empty key")
 	}
@@ -423,7 +423,7 @@ func TestSetWithFieldsPreferred(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Set(req)
+	ok, err := c.Set(context.Background(), req)
 	if err != nil || !ok {
 		t.Fatalf("unexpected error/ok: %v %v", ok, err)
 	}
@@ -451,7 +451,7 @@ func TestSetWithValueMap(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Set(req)
+	ok, err := c.Set(context.Background(), req)
 	if err != nil || !ok {
 		t.Fatalf("unexpected error/ok: %v %v", ok, err)
 	}
@@ -471,7 +471,7 @@ func TestSetWithValueNonMap(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Set(req)
+	ok, err := c.Set(context.Background(), req)
 	if err != nil || !ok {
 		t.Fatalf("unexpected error/ok: %v %v", ok, err)
 	}
@@ -491,7 +491,7 @@ func TestSetWithNoFieldsNoValue(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Set(req)
+	ok, err := c.Set(context.Background(), req)
 	if err != nil || !ok {
 		t.Fatalf("unexpected error/ok: %v %v", ok, err)
 	}
@@ -516,48 +516,48 @@ func TestFlashDBContextMethodsCanceled(t *testing.T) {
 		run  func() error
 	}{
 		{"Exists", func() error {
-			_, err := c.ExistsContext(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
+			_, err := c.Exists(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Get", func() error {
-			_, err := c.GetContext(ctx, &GetRequest{cacheRequest: request, Key: "k"})
+			_, err := c.Get(ctx, &GetRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Set", func() error {
-			_, err := c.SetContext(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
+			_, err := c.Set(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
 			return err
 		}},
 		{"Delete", func() error {
-			_, err := c.DeleteContext(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
+			_, err := c.Delete(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"MultiGet", func() error {
-			_, err := c.MultiGetContext(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := c.MultiGet(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"MultiSet", func() error {
-			_, err := c.MultiSetContext(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
+			_, err := c.MultiSet(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
 			return err
 		}},
 		{"MultiDelete", func() error {
-			_, err := c.MultiDeleteContext(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := c.MultiDelete(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"Increment", func() error {
-			return c.IncrementContext(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return c.Increment(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Decrement", func() error {
-			return c.DecrementContext(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return c.Decrement(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Append", func() error {
-			return c.AppendContext(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
+			return c.Append(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
 		}},
 		{"GetTTL", func() error {
-			_, err := c.GetTTLContext(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
+			_, err := c.GetTTL(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"SetTTL", func() error {
-			return c.SetTTLContext(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
+			return c.SetTTL(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
 		}},
 	}
 
@@ -575,7 +575,7 @@ func TestFlashDBContextMethodsCanceled(t *testing.T) {
 
 func TestDeleteNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.Delete(nil); err == nil {
+	if _, err := c.Delete(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil DeleteRequest")
 	}
 }
@@ -587,7 +587,7 @@ func TestDeleteComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.Delete(req)
+	_, err := c.Delete(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for empty key")
 	}
@@ -602,7 +602,7 @@ func TestDeleteHappyPath(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ok, err := c.Delete(req)
+	ok, err := c.Delete(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -616,14 +616,14 @@ func TestDeleteHappyPath(t *testing.T) {
 
 func TestMultiGetNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.MultiGet(nil); err == nil {
+	if _, err := c.MultiGet(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil MultiGetRequest")
 	}
 }
 
 func TestMultiGetEmptyKeys(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiGet(&MultiGetRequest{Keys: []string{}})
+	out, err := c.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -634,7 +634,7 @@ func TestMultiGetEmptyKeys(t *testing.T) {
 
 func TestMultiGetAllInvalidKeys(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiGet(&MultiGetRequest{Keys: []string{""}})
+	out, err := c.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{""}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -654,7 +654,7 @@ func TestMultiGetComposeKeyErrorSkipped(t *testing.T) {
 	}
 
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiGet(&MultiGetRequest{Keys: []string{"bad"}})
+	out, err := c.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{"bad"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -672,7 +672,7 @@ func TestMultiGetStoreError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.MultiGet(req)
+	_, err := c.MultiGet(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error from MultiGet")
 	}
@@ -690,7 +690,7 @@ func TestMultiGetHappyPath(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiGet(req)
+	out, err := c.MultiGet(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -701,14 +701,14 @@ func TestMultiGetHappyPath(t *testing.T) {
 
 func TestMultiSetNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.MultiSet(nil); err == nil {
+	if _, err := c.MultiSet(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil MultiSetRequest")
 	}
 }
 
 func TestMultiSetNothingToDo(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiSet(&MultiSetRequest{
+	out, err := c.MultiSet(context.Background(), &MultiSetRequest{
 		FieldsMap: nil,
 		ValueMap:  nil,
 	})
@@ -740,7 +740,7 @@ func TestMultiSetFieldsAndValues(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiSet(req)
+	out, err := c.MultiSet(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -777,7 +777,7 @@ func TestMultiSetNilPayload(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiSet(req)
+	out, err := c.MultiSet(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -807,7 +807,7 @@ func TestMultiSetComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.MultiSet(req)
+	_, err := c.MultiSet(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error from MultiSet")
 	}
@@ -825,7 +825,7 @@ func TestMultiSetValueMapEmptyKey(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiSet(req)
+	out, err := c.MultiSet(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -855,7 +855,7 @@ func TestMultiSetValueMapComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiSet(req)
+	out, err := c.MultiSet(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -878,7 +878,7 @@ func TestMultiSetWithStoreErrorSetsFirstErr(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiSet(req)
+	out, err := c.MultiSet(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error from MultiSet")
 	}
@@ -889,14 +889,14 @@ func TestMultiSetWithStoreErrorSetsFirstErr(t *testing.T) {
 
 func TestMultiDeleteNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.MultiDelete(nil); err == nil {
+	if _, err := c.MultiDelete(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil MultiDeleteRequest")
 	}
 }
 
 func TestMultiDeleteEmptyKeys(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiDelete(&MultiDeleteRequest{Keys: []string{}})
+	out, err := c.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -907,7 +907,7 @@ func TestMultiDeleteEmptyKeys(t *testing.T) {
 
 func TestMultiDeleteAllInvalidKeys(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiDelete(&MultiDeleteRequest{Keys: []string{""}})
+	out, err := c.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{""}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -927,7 +927,7 @@ func TestMultiDeleteComposeKeyErrorSkipped(t *testing.T) {
 	}
 
 	c := newTestCache(newFakeStore(), 0)
-	out, err := c.MultiDelete(&MultiDeleteRequest{Keys: []string{"bad"}})
+	out, err := c.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{"bad"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -945,7 +945,7 @@ func TestMultiDeleteStoreError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.MultiDelete(req)
+	_, err := c.MultiDelete(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error from MultiDelete")
 	}
@@ -963,7 +963,7 @@ func TestMultiDeleteHappyPath(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	out, err := c.MultiDelete(req)
+	out, err := c.MultiDelete(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -977,7 +977,7 @@ func TestMultiDeleteHappyPath(t *testing.T) {
 
 func TestIncrementNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if err := c.Increment(nil); err == nil {
+	if err := c.Increment(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil IncrementRequest")
 	}
 }
@@ -993,7 +993,7 @@ func TestIncrementWithFields(t *testing.T) {
 	incReq.SetNamespace("ns")
 	incReq.SetCollection("coll")
 
-	err := c.Increment(incReq)
+	err := c.Increment(context.Background(), incReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1016,7 +1016,7 @@ func TestIncrementComposeKeyError(t *testing.T) {
 	req := &IncrementRequest{Key: "k", Fields: map[string]int64{"a": 1}}
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
-	if err := c.Increment(req); err == nil {
+	if err := c.Increment(context.Background(), req); err == nil {
 		t.Fatalf("expected error")
 	}
 }
@@ -1032,7 +1032,7 @@ func TestIncrementWithValue(t *testing.T) {
 	incReq.SetNamespace("ns")
 	incReq.SetCollection("coll")
 
-	err := c.Increment(incReq)
+	err := c.Increment(context.Background(), incReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1052,7 +1052,7 @@ func TestIncrementNoOp(t *testing.T) {
 	incReq.SetNamespace("ns")
 	incReq.SetCollection("coll")
 
-	err := c.Increment(incReq)
+	err := c.Increment(context.Background(), incReq)
 	if err != nil {
 		t.Fatalf("expected nil error for no-op increment")
 	}
@@ -1063,7 +1063,7 @@ func TestIncrementNoOp(t *testing.T) {
 
 func TestDecrementNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if err := c.Decrement(nil); err == nil {
+	if err := c.Decrement(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil DecrementRequest")
 	}
 }
@@ -1079,7 +1079,7 @@ func TestDecrementWithFields(t *testing.T) {
 	decReq.SetNamespace("ns")
 	decReq.SetCollection("coll")
 
-	err := c.Decrement(decReq)
+	err := c.Decrement(context.Background(), decReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1099,7 +1099,7 @@ func TestDecrementComposeKeyError(t *testing.T) {
 	req := &DecrementRequest{Key: "k", Fields: map[string]int64{"a": 1}}
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
-	if err := c.Decrement(req); err == nil {
+	if err := c.Decrement(context.Background(), req); err == nil {
 		t.Fatalf("expected error")
 	}
 }
@@ -1115,7 +1115,7 @@ func TestDecrementWithValue(t *testing.T) {
 	decReq.SetNamespace("ns")
 	decReq.SetCollection("coll")
 
-	err := c.Decrement(decReq)
+	err := c.Decrement(context.Background(), decReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1134,7 +1134,7 @@ func TestDecrementNoOp(t *testing.T) {
 	decReq.SetNamespace("ns")
 	decReq.SetCollection("coll")
 
-	err := c.Decrement(decReq)
+	err := c.Decrement(context.Background(), decReq)
 	if err != nil {
 		t.Fatalf("expected nil error for no-op decrement")
 	}
@@ -1145,7 +1145,7 @@ func TestDecrementNoOp(t *testing.T) {
 
 func TestAppendNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if err := c.Append(nil); err == nil {
+	if err := c.Append(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil AppendRequest")
 	}
 }
@@ -1161,7 +1161,7 @@ func TestAppendWithFields(t *testing.T) {
 	appReq.SetNamespace("ns")
 	appReq.SetCollection("coll")
 
-	err := c.Append(appReq)
+	err := c.Append(context.Background(), appReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1184,7 +1184,7 @@ func TestAppendComposeKeyError(t *testing.T) {
 	req := &AppendRequest{Key: "k", Fields: map[string]string{"a": "b"}}
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
-	if err := c.Append(req); err == nil {
+	if err := c.Append(context.Background(), req); err == nil {
 		t.Fatalf("expected error")
 	}
 }
@@ -1200,7 +1200,7 @@ func TestAppendWithValue(t *testing.T) {
 	appReq.SetNamespace("ns")
 	appReq.SetCollection("coll")
 
-	err := c.Append(appReq)
+	err := c.Append(context.Background(), appReq)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1219,7 +1219,7 @@ func TestAppendNoOp(t *testing.T) {
 	appReq.SetNamespace("ns")
 	appReq.SetCollection("coll")
 
-	err := c.Append(appReq)
+	err := c.Append(context.Background(), appReq)
 	if err != nil {
 		t.Fatalf("expected nil error for no-op append")
 	}
@@ -1230,7 +1230,7 @@ func TestAppendNoOp(t *testing.T) {
 
 func TestGetTTLNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if _, err := c.GetTTL(nil); err == nil {
+	if _, err := c.GetTTL(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil GetTTLRequest")
 	}
 }
@@ -1242,7 +1242,7 @@ func TestGetTTLComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	_, err := c.GetTTL(req)
+	_, err := c.GetTTL(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for empty key")
 	}
@@ -1257,7 +1257,7 @@ func TestGetTTLHappyPath(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	ttl, err := c.GetTTL(req)
+	ttl, err := c.GetTTL(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1268,7 +1268,7 @@ func TestGetTTLHappyPath(t *testing.T) {
 
 func TestSetTTLNilRequest(t *testing.T) {
 	c := newTestCache(newFakeStore(), 0)
-	if err := c.SetTTL(nil); err == nil {
+	if err := c.SetTTL(context.Background(), nil); err == nil {
 		t.Fatalf("expected error for nil SetTTLRequest")
 	}
 }
@@ -1280,7 +1280,7 @@ func TestSetTTLComposeKeyError(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	err := c.SetTTL(req)
+	err := c.SetTTL(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for empty key")
 	}
@@ -1297,7 +1297,7 @@ func TestSetTTLWithExplicitTTL(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	err := c.SetTTL(req)
+	err := c.SetTTL(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1317,7 +1317,7 @@ func TestSetTTLWithDefaultTTL(t *testing.T) {
 	req.SetNamespace("ns")
 	req.SetCollection("coll")
 
-	err := c.SetTTL(req)
+	err := c.SetTTL(context.Background(), req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

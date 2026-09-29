@@ -16,9 +16,9 @@ import (
 // the key (e.g., IP address, user ID, etc.) and current rate limiting state.
 type Limiter interface {
 	// Allow checks whether a request is allowed for the given key.
-	// It returns true if the request is permitted, and false if rate limited.
+	// It returns the decision plus retry metadata for rate-limited callers.
 	// An error is returned if the underlying backend or operation fails.
-	Allow(ctx context.Context, key string) (bool, error)
+	Allow(ctx context.Context, key string) (Result, error)
 }
 
 // NewRateLimiter creates a rate limiter instance based on the provided options.
@@ -39,6 +39,9 @@ func NewRateLimiter(opts *Options) (Limiter, error) {
 
 	switch opts.Type {
 	case RateLimiterTypeRedis:
+		if err := validateRateLimitConfig(opts.MaxTokens, opts.Interval); err != nil {
+			return nil, err
+		}
 		client, ok := opts.Client.(redis.RedisInterface)
 		if !ok {
 			return nil, fmt.Errorf("invalid client type for Redis rate limiter")

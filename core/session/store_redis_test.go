@@ -82,7 +82,7 @@ func TestNewRedisStore_PingSuccess(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return &mockConn{}, nil
 	}
 
@@ -105,7 +105,7 @@ func TestNewRedisStore_PingError(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return &mockConn{}, nil
 	}
 
@@ -129,7 +129,7 @@ func TestNewRedisStore_ConnectError(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return nil, errors.New("connect fail")
 	}
 

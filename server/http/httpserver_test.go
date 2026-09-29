@@ -1114,7 +1114,7 @@ func TestRunBackgroundWorkers_NoWorkers(t *testing.T) {
 	var called bool
 
 	origFunc := startOverseerFunc
-	startOverseerFunc = func(workers []*workers.WorkerConfig, l logger.Logger) {
+	startOverseerFunc = func(_ context.Context, workers []*workers.WorkerConfig, l logger.Logger, _ *workers.OverseerOptions) {
 		called = true
 	}
 	defer func() {
@@ -1144,7 +1144,7 @@ func TestRunBackgroundWorkers_WithWorkers(t *testing.T) {
 	defer workers.SetOverseerSleepTimeout(origSleep)
 
 	origFunc := startOverseerFunc
-	startOverseerFunc = func(workers []*workers.WorkerConfig, l logger.Logger) {
+	startOverseerFunc = func(_ context.Context, workers []*workers.WorkerConfig, l logger.Logger, _ *workers.OverseerOptions) {
 		called = true
 		passedWorkers = workers
 		passedLogger = l

@@ -268,11 +268,7 @@ func SetConnectionConfigE(clusterName string, config *ConnectionConfig) error {
 	return nil
 }
 
-func Connect(connector MongoConnector, clusterName string) (Client, error) {
-	return ConnectContext(context.Background(), connector, clusterName)
-}
-
-func ConnectContext(ctx context.Context, connector MongoConnector, clusterName string) (Client, error) {
+func Connect(ctx context.Context, connector MongoConnector, clusterName string) (Client, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -307,7 +303,7 @@ func ConnectContext(ctx context.Context, connector MongoConnector, clusterName s
 	if err != nil {
 		return nil, err
 	}
-	newConn, err := newInstanceWithConfigContext(ctx, connector, cfg)
+	newConn, err := newInstance(ctx, connector, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -316,36 +312,8 @@ func ConnectContext(ctx context.Context, connector MongoConnector, clusterName s
 	return newConn, nil
 }
 
-// newInstance establishes a new MongoDB client connection targeting a specific database cluster.
-// The function creates a new MongoDB client connection by setting various client options such
-// as the connection URI, retry writes, write concern, connection timeout, and max connection pool size.
-// The configurations for these options are derived based on the provided cluster name.
-func newInstance(connector MongoConnector, clusterName string) (Client, error) {
-	return newInstanceContext(context.Background(), connector, clusterName)
-}
-
-func newInstanceContext(ctx context.Context, connector MongoConnector, clusterName string) (Client, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	mutex.RLock()
-	cfg, err := getConnectionConfigLocked(clusterName)
-	mutex.RUnlock()
-	if err != nil {
-		return nil, err
-	}
-	return newInstanceWithConfigContext(ctx, connector, cfg)
-}
-
-func newInstanceWithConfig(connector MongoConnector, cfg *ConnectionConfig) (Client, error) {
-	return newInstanceWithConfigContext(context.Background(), connector, cfg)
-}
-
-func newInstanceWithConfigContext(ctx context.Context, connector MongoConnector, cfg *ConnectionConfig) (Client, error) {
+// newInstance establishes a new MongoDB client from a validated connection config.
+func newInstance(ctx context.Context, connector MongoConnector, cfg *ConnectionConfig) (Client, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}

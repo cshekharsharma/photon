@@ -63,7 +63,7 @@ func TestDBContext_Exec(t *testing.T) {
 			return mockResult, nil
 		},
 	}
-	res, err := ctx.Exec("fake", 1)
+	res, err := ctx.Exec(context.Background(), "fake", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, mockResult, res)
 }
@@ -84,7 +84,7 @@ func TestDBContext_ContextOverridesAndCancellation(t *testing.T) {
 			},
 		}
 
-		res, err := dbctx.ExecContext(ctx, "UPDATE x SET y = ?", 1)
+		res, err := dbctx.Exec(ctx, "UPDATE x SET y = ?", 1)
 		assert.ErrorIs(t, err, context.Canceled)
 		assert.Equal(t, mockResult, res)
 		assert.True(t, receivedCanceledContext)
@@ -101,7 +101,7 @@ func TestDBContext_ContextOverridesAndCancellation(t *testing.T) {
 			},
 		}
 
-		rows, err := dbctx.QueryContext(ctx, "SELECT * FROM x WHERE id = ?", 7)
+		rows, err := dbctx.Query(ctx, "SELECT * FROM x WHERE id = ?", 7)
 		assert.ErrorIs(t, err, context.Canceled)
 		assert.Nil(t, rows)
 		assert.True(t, receivedCanceledContext)
@@ -118,7 +118,7 @@ func TestDBContext_PublicWrappersAndTxContextBranches(t *testing.T) {
 		tx.On("Exec", "exec-wrapper", []any{1}).Return(mockResult, nil)
 
 		dbctx := &DBContext{Tx: tx}
-		res, err := dbctx.Exec("exec-wrapper", 1)
+		res, err := dbctx.Exec(context.Background(), "exec-wrapper", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, mockResult, res)
 		tx.AssertExpectations(t)
@@ -129,7 +129,7 @@ func TestDBContext_PublicWrappersAndTxContextBranches(t *testing.T) {
 		tx.On("Prepare", "prepare-wrapper").Return(stmt, nil)
 
 		dbctx := &DBContext{Tx: tx}
-		got, err := dbctx.Prepare("prepare-wrapper")
+		got, err := dbctx.Prepare(context.Background(), "prepare-wrapper")
 		assert.NoError(t, err)
 		assert.Equal(t, stmt, got)
 		tx.AssertExpectations(t)
@@ -148,7 +148,7 @@ func TestDBContext_PublicWrappersAndTxContextBranches(t *testing.T) {
 			},
 		}
 
-		got, err := dbctx.PrepareContext(ctx, "prepare-fn")
+		got, err := dbctx.Prepare(ctx, "prepare-fn")
 		assert.ErrorIs(t, err, context.Canceled)
 		assert.Equal(t, stmt, got)
 		assert.True(t, receivedCanceledContext)
@@ -163,15 +163,15 @@ func TestDBContext_PublicWrappersAndTxContextBranches(t *testing.T) {
 		dbctx := &DBContext{Tx: tx}
 		var nilCtx context.Context
 
-		res, err := dbctx.ExecContext(nilCtx, "exec-context", 1)
+		res, err := dbctx.Exec(nilCtx, "exec-context", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, mockResult, res)
 
-		gotStmt, err := dbctx.PrepareContext(nilCtx, "prepare-context")
+		gotStmt, err := dbctx.Prepare(nilCtx, "prepare-context")
 		assert.NoError(t, err)
 		assert.Equal(t, stmt, gotStmt)
 
-		gotRows, err := dbctx.QueryContext(nilCtx, "query-context", 2)
+		gotRows, err := dbctx.Query(nilCtx, "query-context", 2)
 		assert.NoError(t, err)
 		assert.Equal(t, rows, gotRows)
 
@@ -186,7 +186,7 @@ func TestDBContext_exec(t *testing.T) {
 		tx := new(MockTx)
 		tx.On("Exec", "q1", mock.Anything).Return(mockResult, nil)
 		ctx := &DBContext{Tx: tx}
-		res, err := ctx.exec("q1", 1)
+		res, err := ctx.exec(context.Background(), "q1", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, mockResult, res)
 	})
@@ -195,7 +195,7 @@ func TestDBContext_exec(t *testing.T) {
 		mockConn := new(MockedMySqlDb)
 		mockConn.On("Exec", "q2", mock.Anything).Return(mockResult, nil)
 		ctx := &DBContext{Conn: mockConn}
-		res, err := ctx.exec("q2", 1)
+		res, err := ctx.exec(context.Background(), "q2", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, mockResult, res)
 	})
@@ -215,14 +215,14 @@ func TestDBContext_exec(t *testing.T) {
 		})
 
 		ctx := &DBContext{Cluster: "test-cluster-x"}
-		res, err := ctx.exec("q3", 1)
+		res, err := ctx.exec(context.Background(), "q3", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, mockResult, res)
 	})
 
 	t.Run("InvalidCluster", func(t *testing.T) {
 		ctx := &DBContext{Cluster: "no-cluster"}
-		res, err := ctx.exec("bad", 1)
+		res, err := ctx.exec(context.Background(), "bad", 1)
 		assert.Error(t, err)
 		assert.Nil(t, res)
 	})
@@ -235,7 +235,7 @@ func TestDBContext_Prepare(t *testing.T) {
 			return stmt, nil
 		},
 	}
-	s, err := ctx.Prepare("SELECT")
+	s, err := ctx.Prepare(context.Background(), "SELECT")
 	assert.NoError(t, err)
 	assert.Equal(t, stmt, s)
 }
@@ -247,7 +247,7 @@ func TestDBContext_prepare(t *testing.T) {
 		tx := new(MockTx)
 		tx.On("Prepare", "q1").Return(stmt, nil)
 		ctx := &DBContext{Tx: tx}
-		s, err := ctx.prepare("q1")
+		s, err := ctx.prepare(context.Background(), "q1")
 		assert.NoError(t, err)
 		assert.Equal(t, stmt, s)
 	})
@@ -256,7 +256,7 @@ func TestDBContext_prepare(t *testing.T) {
 		conn := new(MockedMySqlDb)
 		conn.On("Prepare", "q2").Return(stmt, nil)
 		ctx := &DBContext{Conn: conn}
-		s, err := ctx.prepare("q2")
+		s, err := ctx.prepare(context.Background(), "q2")
 		assert.NoError(t, err)
 		assert.Equal(t, stmt, s)
 	})
@@ -276,14 +276,14 @@ func TestDBContext_prepare(t *testing.T) {
 		})
 
 		ctx := &DBContext{Cluster: "c"}
-		s, err := ctx.prepare("q3")
+		s, err := ctx.prepare(context.Background(), "q3")
 		assert.NoError(t, err)
 		assert.Equal(t, stmt, s)
 	})
 
 	t.Run("InvalidCluster", func(t *testing.T) {
 		ctx := &DBContext{Cluster: "invalid"}
-		s, err := ctx.prepare("fail")
+		s, err := ctx.prepare(context.Background(), "fail")
 		assert.Error(t, err)
 		assert.Nil(t, s)
 	})
@@ -296,7 +296,7 @@ func TestDBContext_Query(t *testing.T) {
 			return rows, nil
 		},
 	}
-	r, err := ctx.Query("Q", 1)
+	r, err := ctx.Query(context.Background(), "Q", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, rows, r)
 }
@@ -309,7 +309,7 @@ func TestDBContext_Query_FallbackAndError(t *testing.T) {
 		conn.On("Query", "fallback-q", mock.Anything).Return(rows, nil)
 
 		ctx := &DBContext{Conn: conn}
-		r, err := ctx.Query("fallback-q", 1)
+		r, err := ctx.Query(context.Background(), "fallback-q", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, rows, r)
 	})
@@ -320,7 +320,7 @@ func TestDBContext_Query_FallbackAndError(t *testing.T) {
 				return nil, assert.AnError
 			},
 		}
-		r, err := ctx.Query("q", 1)
+		r, err := ctx.Query(context.Background(), "q", 1)
 		assert.Error(t, err)
 		assert.Nil(t, r)
 	})
@@ -333,7 +333,7 @@ func TestDBContext_query(t *testing.T) {
 		tx := new(MockTx)
 		tx.On("Query", "q11", mock.Anything).Return(rows, nil)
 		ctx := &DBContext{Tx: tx}
-		r, err := ctx.query("q11", 1)
+		r, err := ctx.query(context.Background(), "q11", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, rows, r)
 	})
@@ -342,7 +342,7 @@ func TestDBContext_query(t *testing.T) {
 		conn := new(MockedMySqlDb)
 		conn.On("Query", "q22", mock.Anything).Return(rows, nil)
 		ctx := &DBContext{Conn: conn}
-		r, err := ctx.query("q22", 1)
+		r, err := ctx.query(context.Background(), "q22", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, rows, r)
 	})
@@ -362,14 +362,14 @@ func TestDBContext_query(t *testing.T) {
 		})
 
 		ctx := &DBContext{Cluster: "z"}
-		r, err := ctx.query("q33", 1)
+		r, err := ctx.query(context.Background(), "q33", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, rows, r)
 	})
 
 	t.Run("InvalidCluster", func(t *testing.T) {
 		ctx := &DBContext{Cluster: "bad"}
-		r, err := ctx.query("q44", 1)
+		r, err := ctx.query(context.Background(), "q44", 1)
 		assert.Error(t, err)
 		assert.Nil(t, r)
 	})

@@ -26,32 +26,24 @@ type MockedMySqlDb struct {
 	mock.Mock
 }
 
-func (mdb *MockedMySqlDb) Ping() error {
+func (mdb *MockedMySqlDb) Ping(ctx context.Context) error {
 	args := mdb.Called()
 	return args.Error(0)
 }
 
-func (mdb *MockedMySqlDb) PingContext(ctx context.Context) error {
-	return mdb.Ping()
-}
-
-func (mdb *MockedMySqlDb) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (mdb *MockedMySqlDb) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	calledArgs := mdb.Called(query, args)
 	result, _ := calledArgs.Get(0).(sql.Result)
 	return result, calledArgs.Error(1)
 }
 
-func (mdb *MockedMySqlDb) Prepare(query string) (*sql.Stmt, error) {
+func (mdb *MockedMySqlDb) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	args := mdb.Called(query)
 	stmt, _ := args.Get(0).(*sql.Stmt)
 	return stmt, args.Error(1)
 }
 
-func (mdb *MockedMySqlDb) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return mdb.Exec(query, args...)
-}
-
-func (mdb *MockedMySqlDb) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (mdb *MockedMySqlDb) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	callArgs := mdb.Called(append([]interface{}{query}, args...)...)
 
 	var rows *sql.Rows
@@ -62,15 +54,7 @@ func (mdb *MockedMySqlDb) Query(query string, args ...interface{}) (*sql.Rows, e
 	return rows, callArgs.Error(1)
 }
 
-func (mdb *MockedMySqlDb) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	return mdb.Query(query, args...)
-}
-
-func (mdb *MockedMySqlDb) QueryRow(query string, args ...interface{}) *sql.Row {
-	return &sql.Row{}
-}
-
-func (mdb *MockedMySqlDb) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (mdb *MockedMySqlDb) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	return &sql.Row{}
 }
 
@@ -92,10 +76,6 @@ func (mdb *MockedMySqlDb) Begin() (*sql.Tx, error) {
 
 func (mdb *MockedMySqlDb) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
 	return nil, nil
-}
-
-func (mdb *MockedMySqlDb) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
-	return mdb.Prepare(query)
 }
 
 func (mdb *MockedMySqlDb) Driver() driver.Driver {
@@ -156,12 +136,12 @@ func TestNewInstance(t *testing.T) {
 		MaxConnLifetime: 100,
 	}
 
-	db, err := newInstance(mockedMyDBC, dbconfig)
+	db, err := newInstance(context.Background(), mockedMyDBC, dbconfig)
 
 	assert.NoError(t, err)
 	assert.Equal(t, mockedMyDb, db)
-	assert.NoError(t, db.Ping())
-	assert.NoError(t, db.PingContext(context.TODO()))
+	assert.NoError(t, db.Ping(context.Background()))
+	assert.NoError(t, db.Ping(context.TODO()))
 	assert.IsType(t, sql.DBStats{}, db.Stats())
 
 	// Testing Ping failure
@@ -171,7 +151,7 @@ func TestNewInstance(t *testing.T) {
 	mockedMyDBC2 := new(MockedMySqlDbConnector)
 	mockedMyDBC2.On("Open", mock.Anything, mock.Anything).Return(mockedMyDb2, nil)
 
-	_, err = newInstance(mockedMyDBC2, dbconfig)
+	_, err = newInstance(context.Background(), mockedMyDBC2, dbconfig)
 
 	assert.Error(t, err)
 }
@@ -195,7 +175,7 @@ func TestNewInstancePingError(t *testing.T) {
 		MaxConnLifetime: 100,
 	}
 
-	_, err := newInstance(mockedMyDBC2, dbconfig)
+	_, err := newInstance(context.Background(), mockedMyDBC2, dbconfig)
 
 	assert.Error(t, err)
 }
@@ -219,7 +199,7 @@ func TestNewInstanceOpenError(t *testing.T) {
 		MaxConnLifetime: 100,
 	}
 
-	_, err := newInstance(mockedMyDBC2, dbconfig)
+	_, err := newInstance(context.Background(), mockedMyDBC2, dbconfig)
 
 	assert.Error(t, err)
 }
@@ -277,19 +257,19 @@ func TestConnect(t *testing.T) {
 	mockedConnector := new(MockedMySqlDbConnector)
 	mockedConnector.On("Open", mock.Anything, mock.Anything).Return(mockedDb, nil)
 
-	db, err := Connect(mockedConnector, clusterName)
+	db, err := Connect(context.Background(), mockedConnector, clusterName)
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
 
-	db2, err := Connect(mockedConnector, clusterName)
+	db2, err := Connect(context.Background(), mockedConnector, clusterName)
 	assert.NoError(t, err)
 	assert.Equal(t, db, db2)
 
-	_, err = Connect(mockedConnector, "missing-cluster")
+	_, err = Connect(context.Background(), mockedConnector, "missing-cluster")
 	assert.Error(t, err)
 }
 
-func TestConnectContextAndConfigEdges(t *testing.T) {
+func TestConnectAndConfigEdges(t *testing.T) {
 	instances = nil
 	connectionConfigMap = nil
 
@@ -298,14 +278,14 @@ func TestConnectContextAndConfigEdges(t *testing.T) {
 	mockedDb.On("Ping").Return(nil)
 	connector.On("Open", mock.Anything, mock.Anything).Return(mockedDb, nil)
 
-	_, err := ConnectContext(context.Background(), connector, "missing-map")
+	_, err := Connect(context.Background(), connector, "missing-map")
 	assert.Error(t, err)
 
 	cfg := &ConnectionConfig{Host: "localhost", Port: "3306", UserName: "user", Password: "pass", DbName: "db"}
 	SetConnectionConfig("ctx", cfg)
 
 	var nilCtx context.Context
-	db, err := ConnectContext(nilCtx, connector, "ctx")
+	db, err := Connect(nilCtx, connector, "ctx")
 	assert.NoError(t, err)
 	assert.Equal(t, mockedDb, db)
 
@@ -318,7 +298,7 @@ func TestConnectContextAndConfigEdges(t *testing.T) {
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	db, err = ConnectContext(cancelled, connector, "cancelled")
+	db, err = Connect(cancelled, connector, "cancelled")
 	assert.Error(t, err)
 	assert.Nil(t, db)
 
@@ -327,7 +307,7 @@ func TestConnectContextAndConfigEdges(t *testing.T) {
 	assert.Nil(t, GetConnectionConfig("missing"))
 }
 
-func TestNewInstanceContextEdges(t *testing.T) {
+func TestNewInstanceEdges(t *testing.T) {
 	cfg := &ConnectionConfig{Host: "localhost", Port: "3306", UserName: "user", Password: "pass", DbName: "db"}
 	connector := new(MockedMySqlDbConnector)
 	mockedDb := new(MockedMySqlDb)
@@ -335,13 +315,13 @@ func TestNewInstanceContextEdges(t *testing.T) {
 	connector.On("Open", mock.Anything, mock.Anything).Return(mockedDb, nil)
 
 	var nilCtx context.Context
-	db, err := newInstanceContext(nilCtx, connector, cfg)
+	db, err := newInstance(nilCtx, connector, cfg)
 	assert.NoError(t, err)
 	assert.Equal(t, mockedDb, db)
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	db, err = newInstanceContext(cancelled, connector, cfg)
+	db, err = newInstance(cancelled, connector, cfg)
 	assert.Error(t, err)
 	assert.Nil(t, db)
 }
@@ -361,25 +341,21 @@ func TestMySqlDb_Methods(t *testing.T) {
 
 	mdb := &MySqlDb{DB: db}
 
-	assert.Error(t, mdb.Ping())
-	assert.Error(t, mdb.PingContext(context.Background()))
+	assert.Error(t, mdb.Ping(context.Background()))
 
-	_, err := mdb.Exec("SELECT 1")
+	_, err := mdb.Exec(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
-	_, err = mdb.ExecContext(context.Background(), "SELECT 1")
+	_, err = mdb.Exec(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
-	_, err = mdb.Query("SELECT 1")
+	_, err = mdb.Query(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
-	_, err = mdb.QueryContext(context.Background(), "SELECT 1")
+	_, err = mdb.Query(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
-	row := mdb.QueryRow("SELECT 1")
-	assert.NotNil(t, row)
-
-	row = mdb.QueryRowContext(context.Background(), "SELECT 1")
+	row := mdb.QueryRow(context.Background(), "SELECT 1")
 	assert.NotNil(t, row)
 
 	mdb.SetConnMaxLifetime(time.Second)
@@ -395,10 +371,10 @@ func TestMySqlDb_Methods(t *testing.T) {
 	_, err = mdb.BeginTx(context.Background(), nil)
 	assert.Error(t, err)
 
-	_, err = mdb.Prepare("SELECT 1")
+	_, err = mdb.Prepare(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
-	_, err = mdb.PrepareContext(context.Background(), "SELECT 1")
+	_, err = mdb.Prepare(context.Background(), "SELECT 1")
 	assert.Error(t, err)
 
 	assert.NotNil(t, mdb.Driver())

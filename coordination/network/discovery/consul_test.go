@@ -68,6 +68,12 @@ func TestConsulRealClient_AgentAndHealth(t *testing.T) {
 }
 
 func TestNewConsulDiscovery(t *testing.T) {
+	t.Run("NilOptions", func(t *testing.T) {
+		discovery, err := NewConsulDiscovery(nil)
+		require.Nil(t, discovery)
+		require.EqualError(t, err, "options are required")
+	})
+
 	t.Run("Success", func(t *testing.T) {
 		d, err := NewConsulDiscovery(&Options{Address: "localhost:8500"})
 		assert.NoError(t, err)
@@ -108,6 +114,15 @@ func TestRegister_AllPaths(t *testing.T) {
 		c := &consulDiscovery{}
 		err := c.Register(context.Background(), nil)
 		assert.EqualError(t, err, "service instance cannot be nil")
+	})
+
+	t.Run("CanceledContext", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		c := &consulDiscovery{}
+		err := c.Register(ctx, &ServiceInstance{ID: "svc-canceled", Name: "svc"})
+		assert.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("MissingInstanceId", func(t *testing.T) {
@@ -220,6 +235,15 @@ func TestConsulDiscovery_Deregister(t *testing.T) {
 		assert.Contains(t, err.Error(), "cannot be empty")
 	})
 
+	t.Run("CanceledContext", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		c := &consulDiscovery{}
+		err := c.Deregister(ctx, "svc-canceled")
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+
 	t.Run("DeregisterFailure", func(t *testing.T) {
 		agent := new(mockAgent)
 		health := new(mockHealth)
@@ -301,6 +325,38 @@ func TestConsulDiscovery_Discover(t *testing.T) {
 		assert.Equal(t, "127.0.0.2", instances[1].Address)
 	})
 
+	t.Run("NilContextAndNilServiceEntry", func(t *testing.T) {
+		health := new(mockHealth)
+		health.On("Service", "svc", "", true, mock.MatchedBy(func(q *api.QueryOptions) bool {
+			return q != nil && q.Context() != nil
+		})).
+			Return([]*api.ServiceEntry{
+				{Service: nil},
+				{Service: &api.AgentService{ID: "1", Service: "svc", Address: "127.0.0.1", Port: 8080}},
+			}, new(api.QueryMeta), nil)
+
+		d := &consulDiscovery{
+			client: &mockConsulClient{health: health},
+			logger: logger.Init(&logger.LoggerConfig{Name: "consul-discovery-nil-context-test", Provider: logger.LoggerProviderZerolog, Type: logger.LoggerTypeStdout}),
+		}
+
+		var nilCtx context.Context
+		instances, err := d.Discover(nilCtx, "svc")
+		assert.NoError(t, err)
+		assert.Len(t, instances, 1)
+		assert.Equal(t, "1", instances[0].ID)
+	})
+
+	t.Run("CanceledContext", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		d := &consulDiscovery{}
+		instances, err := d.Discover(ctx, "svc")
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Nil(t, instances)
+	})
+
 	t.Run("EmptyName", func(t *testing.T) {
 		d := &consulDiscovery{}
 		instances, err := d.Discover(context.Background(), "")
@@ -351,6 +407,15 @@ func TestConsulDiscovery_Watch_AllCases(t *testing.T) {
 		err := d.Watch(context.Background(), "", func([]*ServiceInstance) {})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "service name cannot be empty")
+	})
+
+	t.Run("canceled_context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		d := &consulDiscovery{logger: logger}
+		err := d.Watch(ctx, "svc", func([]*ServiceInstance) {})
+		require.ErrorIs(t, err, context.Canceled)
 	})
 
 	t.Run("nil_callback", func(t *testing.T) {
@@ -481,6 +546,49 @@ func TestConsulDiscovery_Watch_AllCases(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(100 * time.Millisecond)
 	})
+
+	t.Run("error_sleep_stops_on_context_cancel", func(t *testing.T) {
+		health := new(mockHealth)
+		called := make(chan struct{})
+		health.On("Service", "svc", "", true, mock.Anything).Run(func(mock.Arguments) {
+			close(called)
+		}).Return([]*api.ServiceEntry{}, &api.QueryMeta{}, errors.New("temporary"))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		d := &consulDiscovery{
+			client:                  &mockConsulClient{health: health},
+			logger:                  logger,
+			watchBlockingWaitTime:   time.Millisecond,
+			watchIterationSleepTime: time.Hour,
+		}
+
+		require.NoError(t, d.Watch(ctx, "svc", func([]*ServiceInstance) {}))
+		<-called
+		cancel()
+		time.Sleep(10 * time.Millisecond)
+	})
+
+	t.Run("error_after_context_cancel_returns_without_sleep", func(t *testing.T) {
+		health := new(mockHealth)
+		ctx, cancel := context.WithCancel(context.Background())
+		called := make(chan struct{})
+
+		health.On("Service", "svc", "", true, mock.Anything).Run(func(mock.Arguments) {
+			cancel()
+			close(called)
+		}).Return([]*api.ServiceEntry{}, &api.QueryMeta{}, errors.New("context closed"))
+
+		d := &consulDiscovery{
+			client:                  &mockConsulClient{health: health},
+			logger:                  logger,
+			watchBlockingWaitTime:   time.Millisecond,
+			watchIterationSleepTime: time.Hour,
+		}
+
+		require.NoError(t, d.Watch(ctx, "svc", func([]*ServiceInstance) {}))
+		<-called
+		time.Sleep(10 * time.Millisecond)
+	})
 }
 
 func TestConsulDiscovery_Close(t *testing.T) {
@@ -502,6 +610,14 @@ func TestConsulDiscovery_WatchTimingDefaults(t *testing.T) {
 	var nilDiscovery *consulDiscovery
 	assert.Equal(t, watchBlockingWaitTime, nilDiscovery.watchWaitTime())
 	assert.Equal(t, watchIterationSleepTime, nilDiscovery.watchSleepTime())
+}
+
+func TestConsulDiscovery_InternalSafetyHelpers(t *testing.T) {
+	var nilDiscovery *consulDiscovery
+	var nilCtx context.Context
+	assert.NotNil(t, nilDiscovery.log())
+	assert.NotNil(t, normalizeDiscoveryContext(nilCtx))
+	assert.True(t, sleepWithContext(context.Background(), 0))
 }
 
 func TestPopulateConsulConfig_AllFields(t *testing.T) {

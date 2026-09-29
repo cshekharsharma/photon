@@ -308,7 +308,7 @@ func TestStartAllWorkersAndLaunchWorkerBranches(t *testing.T) {
 		},
 	}
 
-	startAllWorkers()
+	startAllWorkers(context.Background())
 
 	timeout := time.After(300 * time.Millisecond)
 	runEvents := 0
@@ -334,7 +334,7 @@ func TestStartAllWorkersAndLaunchWorkerBranches(t *testing.T) {
 		}
 	}
 
-	launchWorkerFromConfig(nil)
+	launchWorkerFromConfig(context.Background(), nil)
 	workerRestartLimit = 0
 	badCfg := &WorkerConfig{
 		Name:      "bad",
@@ -344,7 +344,7 @@ func TestStartAllWorkersAndLaunchWorkerBranches(t *testing.T) {
 			return nil, errors.New("new failed")
 		},
 	}
-	launchWorkerFromConfig(badCfg)
+	launchWorkerFromConfig(context.Background(), badCfg)
 
 	okCfg := &WorkerConfig{
 		Name:      "ok",
@@ -354,7 +354,7 @@ func TestStartAllWorkersAndLaunchWorkerBranches(t *testing.T) {
 			return &testWorker{name: "ok"}, nil
 		},
 	}
-	launchWorkerFromConfig(okCfg)
+	launchWorkerFromConfig(context.Background(), okCfg)
 
 	select {
 	case <-workerChan:
@@ -383,7 +383,7 @@ func TestStartAllWorkersWithContextCancellation(t *testing.T) {
 		},
 	}
 
-	startAllWorkersWithContext(ctx)
+	startAllWorkers(ctx)
 	assert.Equal(t, int32(0), created.Load())
 
 	resetWorkerTestState()
@@ -405,7 +405,7 @@ func TestStartAllWorkersWithContextCancellation(t *testing.T) {
 	}
 
 	created.Store(0)
-	startAllWorkersWithContext(ctx)
+	startAllWorkers(ctx)
 	assert.Equal(t, int32(1), created.Load())
 	select {
 	case <-runSignal:
@@ -557,7 +557,7 @@ func TestRestartTrackingAndSchedulingBranches(t *testing.T) {
 
 	workerRestartHistory = make(map[string][]time.Time)
 	workerRestartLimit = 1
-	scheduleWorkerRestart(cfg, nil)
+	scheduleWorkerRestart(context.Background(), cfg, nil)
 	time.Sleep(20 * time.Millisecond)
 	select {
 	case <-workerChan:
@@ -567,7 +567,7 @@ func TestRestartTrackingAndSchedulingBranches(t *testing.T) {
 
 	workerRestartHistory = make(map[string][]time.Time)
 	workerRestartLimit = 0
-	scheduleWorkerRestart(cfg, &testWorker{name: "schedule", id: "id-over-limit"})
+	scheduleWorkerRestart(context.Background(), cfg, &testWorker{name: "schedule", id: "id-over-limit"})
 }
 
 func TestWorkerRuntimeAndWatchdogConfigBranches(t *testing.T) {
@@ -701,7 +701,7 @@ func TestScheduleWorkerRestartWithContextCancellation(t *testing.T) {
 		},
 	}
 
-	scheduleWorkerRestartWithContext(ctx, cfg, &testWorker{name: "canceled-schedule", id: "wid"})
+	scheduleWorkerRestart(ctx, cfg, &testWorker{name: "canceled-schedule", id: "wid"})
 	assert.Empty(t, workerRestartHistory)
 	assert.Equal(t, int32(0), restartHooks.Load())
 	assert.Equal(t, int32(0), created.Load())
@@ -725,7 +725,7 @@ func TestExecuteOverseerPanicRecoveryPath(t *testing.T) {
 	}
 
 	// Should recover and return without hanging.
-	executeOverseer(true)
+	executeOverseer(context.Background(), true)
 }
 
 func TestExecuteOverseerNonPanicMonitorPathWithInvalidConfigs(t *testing.T) {
@@ -767,7 +767,7 @@ func TestExecuteOverseerNonPanicMonitorPathWithInvalidConfigs(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		executeOverseer(false)
+		executeOverseer(context.Background(), false)
 		close(done)
 	}()
 
@@ -821,7 +821,7 @@ func TestStartOverseerInitializesAndHonorsOnce(t *testing.T) {
 		},
 	}
 
-	StartOverseer(workersA, nil)
+	StartOverseer(context.Background(), workersA, nil, nil)
 	select {
 	case <-done:
 	case <-time.After(300 * time.Millisecond):
@@ -832,11 +832,11 @@ func TestStartOverseerInitializesAndHonorsOnce(t *testing.T) {
 	assert.NotNil(t, workerlogger)
 
 	// startOnce should ignore subsequent calls.
-	StartOverseer(workersB, getTestLogger())
+	StartOverseer(context.Background(), workersB, getTestLogger(), nil)
 	assert.Equal(t, workersA[0].Name, workerList[0].Name)
 }
 
-func TestStartOverseerWithContextStopsMonitorAndRecordsStatus(t *testing.T) {
+func TestStartOverseerStopsMonitorAndRecordsStatus(t *testing.T) {
 	resetWorkerTestState()
 	SetOverseerSleepTimeout(20 * time.Millisecond)
 	workerRestartBackoff = 5 * time.Millisecond
@@ -870,7 +870,7 @@ func TestStartOverseerWithContextStopsMonitorAndRecordsStatus(t *testing.T) {
 		},
 	}
 
-	StartOverseerWithContext(ctx, workers, getTestLogger(), &OverseerOptions{
+	StartOverseer(ctx, workers, getTestLogger(), &OverseerOptions{
 		RestartPolicy: RestartPolicy{Limit: 1, Window: time.Minute, MinBackoff: 5 * time.Millisecond, MaxBackoff: 5 * time.Millisecond},
 		Hooks: WorkerHooks{
 			OnStart: func(WorkerEvent) { starts.Add(1) },
@@ -910,7 +910,7 @@ func TestStartOverseerWithContextStopsMonitorAndRecordsStatus(t *testing.T) {
 	assert.GreaterOrEqual(t, restarts.Load(), int32(1))
 }
 
-func TestStartOverseerWithNilContextDefaults(t *testing.T) {
+func TestStartOverseerAcceptsTodoContext(t *testing.T) {
 	resetWorkerTestState()
 	restartLimit = 0
 	restartTimestamps = []time.Time{time.Now()}
@@ -925,7 +925,7 @@ func TestStartOverseerWithNilContextDefaults(t *testing.T) {
 	}
 	overseerTestHookMu.Unlock()
 
-	StartOverseerWithContext(context.TODO(), []*WorkerConfig{
+	StartOverseer(context.TODO(), []*WorkerConfig{
 		{
 			Name:      "nil-context",
 			MaxCount:  1,
@@ -964,7 +964,7 @@ func TestExecuteOverseerRecoveryHonorsCanceledContext(t *testing.T) {
 		},
 	}
 
-	executeOverseerWithContext(ctx, true)
+	executeOverseer(ctx, true)
 }
 
 func TestWorkerHelperBranches(t *testing.T) {
@@ -995,7 +995,7 @@ func TestMonitorWorkersBranches(t *testing.T) {
 			_ = recover()
 			close(done)
 		}()
-		monitorWorkers()
+		monitorWorkers(context.Background())
 	}()
 
 	workerChan <- &testWorker{name: "unknown", id: "unknown-id"}
@@ -1031,7 +1031,7 @@ func TestMonitorWorkersTickerPath(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		monitorWorkersWithContext(ctx)
+		monitorWorkers(ctx)
 		close(done)
 	}()
 
@@ -1040,7 +1040,7 @@ func TestMonitorWorkersTickerPath(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(200 * time.Millisecond):
-		t.Fatal("monitorWorkersWithContext did not stop after ticker path")
+		t.Fatal("monitorWorkers did not stop after ticker path")
 	}
 }
 
@@ -1065,6 +1065,6 @@ func TestExecuteOverseerRecoveryRestartBranch(t *testing.T) {
 		},
 	}
 
-	executeOverseer(false)
+	executeOverseer(context.Background(), false)
 	time.Sleep(250 * time.Millisecond)
 }

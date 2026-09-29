@@ -93,11 +93,7 @@ var composeKeyFn = composeKey
 
 // Exists checks if a key exists in the FlashDBCache.
 // Returns true if the key is found, false otherwise.
-func (c *FlashDBCache) Exists(req *ExistsRequest) (bool, error) {
-	return c.ExistsContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) ExistsContext(ctx context.Context, req *ExistsRequest) (bool, error) {
+func (c *FlashDBCache) Exists(ctx context.Context, req *ExistsRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -116,11 +112,7 @@ func (c *FlashDBCache) ExistsContext(ctx context.Context, req *ExistsRequest) (b
 
 // Get retrieves the value associated with a key from the FlashDBCache.
 // Returns nil if the key is not found.
-func (c *FlashDBCache) Get(req *GetRequest) (any, error) {
-	return c.GetContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) GetContext(ctx context.Context, req *GetRequest) (any, error) {
+func (c *FlashDBCache) Get(ctx context.Context, req *GetRequest) (any, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -160,11 +152,7 @@ func (c *FlashDBCache) GetContext(ctx context.Context, req *GetRequest) (any, er
 
 // Set stores the value for a key in the FlashDBCache.
 // Returns true if the operation succeeded, false otherwise.
-func (c *FlashDBCache) Set(req *SetRequest) (bool, error) {
-	return c.SetContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) SetContext(ctx context.Context, req *SetRequest) (bool, error) {
+func (c *FlashDBCache) Set(ctx context.Context, req *SetRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -209,11 +197,7 @@ func (c *FlashDBCache) SetContext(ctx context.Context, req *SetRequest) (bool, e
 
 // Delete removes a key from the FlashDBCache.
 // Returns true if the key was successfully deleted, false otherwise.
-func (c *FlashDBCache) Delete(req *DeleteRequest) (bool, error) {
-	return c.DeleteContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) DeleteContext(ctx context.Context, req *DeleteRequest) (bool, error) {
+func (c *FlashDBCache) Delete(ctx context.Context, req *DeleteRequest) (bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return false, err
 	}
@@ -232,11 +216,7 @@ func (c *FlashDBCache) DeleteContext(ctx context.Context, req *DeleteRequest) (b
 
 // MultiGet retrieves multiple keys from the FlashDBCache.
 // Returns a map of keys to their values; missing keys will be absent.
-func (c *FlashDBCache) MultiGet(req *MultiGetRequest) (map[string]any, error) {
-	return c.MultiGetContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) MultiGetContext(ctx context.Context, req *MultiGetRequest) (map[string]any, error) {
+func (c *FlashDBCache) MultiGet(ctx context.Context, req *MultiGetRequest) (map[string]any, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -286,11 +266,7 @@ func (c *FlashDBCache) MultiGetContext(ctx context.Context, req *MultiGetRequest
 
 // MultiSet sets multiple keys in the FlashDBCache.
 // Returns a map indicating success status for each key.
-func (c *FlashDBCache) MultiSet(req *MultiSetRequest) (map[string]bool, error) {
-	return c.MultiSetContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) MultiSetContext(ctx context.Context, req *MultiSetRequest) (map[string]bool, error) {
+func (c *FlashDBCache) MultiSet(ctx context.Context, req *MultiSetRequest) (map[string]bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -378,11 +354,7 @@ func (c *FlashDBCache) MultiSetContext(ctx context.Context, req *MultiSetRequest
 
 // MultiSet sets multiple keys in the FlashDBCache.
 // Returns a map indicating success status for each key.
-func (c *FlashDBCache) MultiDelete(req *MultiDeleteRequest) (map[string]bool, error) {
-	return c.MultiDeleteContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) MultiDeleteContext(ctx context.Context, req *MultiDeleteRequest) (map[string]bool, error) {
+func (c *FlashDBCache) MultiDelete(ctx context.Context, req *MultiDeleteRequest) (map[string]bool, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return nil, err
 	}
@@ -434,11 +406,7 @@ func (c *FlashDBCache) MultiDeleteContext(ctx context.Context, req *MultiDeleteR
 
 // Increment increases numeric fields in the cache.
 // If Fields is provided, those specific fields are incremented.
-func (c *FlashDBCache) Increment(req *IncrementRequest) error {
-	return c.IncrementContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) IncrementContext(ctx context.Context, req *IncrementRequest) error {
+func (c *FlashDBCache) Increment(ctx context.Context, req *IncrementRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -467,11 +435,7 @@ func (c *FlashDBCache) IncrementContext(ctx context.Context, req *IncrementReque
 
 // Decrement decreases numeric fields in the cache.
 // If Fields is provided, those specific fields are decremented.
-func (c *FlashDBCache) Decrement(req *DecrementRequest) error {
-	return c.DecrementContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) DecrementContext(ctx context.Context, req *DecrementRequest) error {
+func (c *FlashDBCache) Decrement(ctx context.Context, req *DecrementRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -501,11 +465,7 @@ func (c *FlashDBCache) DecrementContext(ctx context.Context, req *DecrementReque
 
 // Increment increases numeric fields in the cache.
 // If Fields is provided, those specific fields are incremented.
-func (c *FlashDBCache) Append(req *AppendRequest) error {
-	return c.AppendContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) AppendContext(ctx context.Context, req *AppendRequest) error {
+func (c *FlashDBCache) Append(ctx context.Context, req *AppendRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}
@@ -534,11 +494,7 @@ func (c *FlashDBCache) AppendContext(ctx context.Context, req *AppendRequest) er
 
 // GetTTL retrieves the remaining TTL for a key in seconds.
 // Returns 0 if the key does not have a TTL or does not exist.
-func (c *FlashDBCache) GetTTL(req *GetTTLRequest) (int64, error) {
-	return c.GetTTLContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) GetTTLContext(ctx context.Context, req *GetTTLRequest) (int64, error) {
+func (c *FlashDBCache) GetTTL(ctx context.Context, req *GetTTLRequest) (int64, error) {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return 0, err
 	}
@@ -557,11 +513,7 @@ func (c *FlashDBCache) GetTTLContext(ctx context.Context, req *GetTTLRequest) (i
 
 // SetTTL sets a new TTL for a key.
 // If TTL is 0 or negative, the key will have no expiration.
-func (c *FlashDBCache) SetTTL(req *SetTTLRequest) error {
-	return c.SetTTLContext(context.Background(), req)
-}
-
-func (c *FlashDBCache) SetTTLContext(ctx context.Context, req *SetTTLRequest) error {
+func (c *FlashDBCache) SetTTL(ctx context.Context, req *SetTTLRequest) error {
 	if _, err := checkedCacheContext(ctx); err != nil {
 		return err
 	}

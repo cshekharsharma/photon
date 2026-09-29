@@ -20,9 +20,6 @@ import (
 //   - Observability / tracing wrappers
 //   - Query auditing
 //   - Fault injection
-//
-// IMPORTANT: Prefer the Context variants (ExecContext/QueryContext/PrepareContext).
-// The non-context methods call the context variants with context.Background().
 type DBContext struct {
 	// Tx represents an active PostgreSQL transaction.
 	// If set, all SQL operations are executed inside this transaction.
@@ -52,25 +49,7 @@ type DBContext struct {
 	QueryFn func(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// Exec executes a SQL statement that does not return rows.
-// It uses context.Background() and applies DefaultTimeout if configured.
-func (ctx *DBContext) Exec(query string, args ...any) (sql.Result, error) {
-	return ctx.ExecContext(context.Background(), query, args...)
-}
-
-// Query executes a SQL query that returns rows.
-// It uses context.Background() and applies DefaultTimeout if configured.
-func (ctx *DBContext) Query(query string, args ...any) (*sql.Rows, error) {
-	return ctx.QueryContext(context.Background(), query, args...)
-}
-
-// Prepare creates a prepared SQL statement.
-// It uses context.Background() and applies DefaultTimeout if configured.
-func (ctx *DBContext) Prepare(query string) (*sql.Stmt, error) {
-	return ctx.PrepareContext(context.Background(), query)
-}
-
-// ExecContext executes a SQL statement that does not return rows
+// Exec executes a SQL statement that does not return rows
 // (INSERT, UPDATE, DELETE, etc).
 //
 // Resolution order:
@@ -78,7 +57,7 @@ func (ctx *DBContext) Prepare(query string) (*sql.Stmt, error) {
 //  2. Tx.ExecContext() / Tx.Exec()
 //  3. Conn.ExecContext() / Conn.Exec()
 //  4. Cluster-based connection via Connect()
-func (ctx *DBContext) ExecContext(c context.Context, query string, args ...any) (sql.Result, error) {
+func (ctx *DBContext) Exec(c context.Context, query string, args ...any) (sql.Result, error) {
 	c, cancel := ctx.withDefaultTimeout(c)
 	if cancel != nil {
 		defer cancel()
@@ -89,17 +68,17 @@ func (ctx *DBContext) ExecContext(c context.Context, query string, args ...any) 
 		return ctx.ExecFn(c, query, args...)
 	}
 
-	return ctx.execContext(c, query, args...)
+	return ctx.exec(c, query, args...)
 }
 
-// PrepareContext prepares a SQL statement.
+// Prepare prepares a SQL statement.
 //
 // Resolution order:
 //  1. PrepareFn override (if set)
 //  2. Tx.PrepareContext() / Tx.Prepare()
 //  3. Conn.PrepareContext() / Conn.Prepare()
 //  4. Cluster-based connection via Connect()
-func (ctx *DBContext) PrepareContext(c context.Context, query string) (*sql.Stmt, error) {
+func (ctx *DBContext) Prepare(c context.Context, query string) (*sql.Stmt, error) {
 	c, cancel := ctx.withDefaultTimeout(c)
 	if cancel != nil {
 		defer cancel()
@@ -110,17 +89,17 @@ func (ctx *DBContext) PrepareContext(c context.Context, query string) (*sql.Stmt
 		return ctx.PrepareFn(c, query) //nolint:sqlclosecheck // caller owns the returned statement.
 	}
 
-	return ctx.prepareContext(c, query) //nolint:sqlclosecheck // caller owns the returned statement.
+	return ctx.prepare(c, query) //nolint:sqlclosecheck // caller owns the returned statement.
 }
 
-// QueryContext executes a SQL query that returns rows.
+// Query executes a SQL query that returns rows.
 //
 // Resolution order:
 //  1. QueryFn override (if set)
 //  2. Tx.QueryContext() / Tx.Query()
 //  3. Conn.QueryContext() / Conn.Query()
 //  4. Cluster-based connection via Connect()
-func (ctx *DBContext) QueryContext(c context.Context, query string, args ...any) (*sql.Rows, error) {
+func (ctx *DBContext) Query(c context.Context, query string, args ...any) (*sql.Rows, error) {
 	c, cancel := ctx.withDefaultTimeout(c)
 	if cancel != nil {
 		defer cancel()
@@ -131,7 +110,7 @@ func (ctx *DBContext) QueryContext(c context.Context, query string, args ...any)
 		return ctx.QueryFn(c, query, args...) //nolint:sqlclosecheck // caller owns the returned rows.
 	}
 
-	return ctx.queryContext(c, query, args...) //nolint:sqlclosecheck // caller owns the returned rows.
+	return ctx.query(c, query, args...) //nolint:sqlclosecheck // caller owns the returned rows.
 }
 
 // --- internals ---
@@ -170,7 +149,7 @@ func (ctx *DBContext) resolveConn() (PostgresDbInterface, error) {
 	return Connect(helperPostgresConnector, ctx.Cluster)
 }
 
-func (ctx *DBContext) execContext(c context.Context, query string, args ...any) (sql.Result, error) {
+func (ctx *DBContext) exec(c context.Context, query string, args ...any) (sql.Result, error) {
 	if err := ctx.validateResolution(); err != nil {
 		return nil, err
 	}
@@ -183,17 +162,17 @@ func (ctx *DBContext) execContext(c context.Context, query string, args ...any) 
 	}
 
 	if ctx.Conn != nil {
-		return ctx.Conn.ExecContext(c, query, args...)
+		return ctx.Conn.Exec(c, query, args...)
 	}
 
 	conn, err := Connect(helperPostgresConnector, ctx.Cluster)
 	if err != nil {
 		return nil, err
 	}
-	return conn.ExecContext(c, query, args...)
+	return conn.Exec(c, query, args...)
 }
 
-func (ctx *DBContext) prepareContext(c context.Context, query string) (*sql.Stmt, error) {
+func (ctx *DBContext) prepare(c context.Context, query string) (*sql.Stmt, error) {
 	if err := ctx.validateResolution(); err != nil {
 		return nil, err
 	}
@@ -206,17 +185,17 @@ func (ctx *DBContext) prepareContext(c context.Context, query string) (*sql.Stmt
 	}
 
 	if ctx.Conn != nil {
-		return ctx.Conn.PrepareContext(c, query)
+		return ctx.Conn.Prepare(c, query)
 	}
 
 	conn, err := Connect(helperPostgresConnector, ctx.Cluster)
 	if err != nil {
 		return nil, err
 	}
-	return conn.PrepareContext(c, query)
+	return conn.Prepare(c, query)
 }
 
-func (ctx *DBContext) queryContext(c context.Context, query string, args ...any) (*sql.Rows, error) {
+func (ctx *DBContext) query(c context.Context, query string, args ...any) (*sql.Rows, error) {
 	if err := ctx.validateResolution(); err != nil {
 		return nil, err
 	}
@@ -229,14 +208,14 @@ func (ctx *DBContext) queryContext(c context.Context, query string, args ...any)
 	}
 
 	if ctx.Conn != nil {
-		return ctx.Conn.QueryContext(c, query, args...)
+		return ctx.Conn.Query(c, query, args...)
 	}
 
 	conn, err := Connect(helperPostgresConnector, ctx.Cluster)
 	if err != nil {
 		return nil, err
 	}
-	return conn.QueryContext(c, query, args...)
+	return conn.Query(c, query, args...)
 }
 
 // Tx is the minimal transaction/connection surface used by DBContext.

@@ -1,6 +1,7 @@
 package ratelimiter
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -28,6 +29,42 @@ func TestNewRateLimiter_InvalidClientType(t *testing.T) {
 	}
 }
 
+func TestNewRateLimiter_InvalidConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    *Options
+		message string
+	}{
+		{
+			name: "max tokens",
+			opts: &Options{
+				Type:      RateLimiterTypeRedis,
+				MaxTokens: 0,
+				Interval:  time.Second,
+			},
+			message: "rate limiter max tokens must be positive",
+		},
+		{
+			name: "interval",
+			opts: &Options{
+				Type:      RateLimiterTypeRedis,
+				MaxTokens: 1,
+				Interval:  0,
+			},
+			message: "rate limiter interval must be positive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewRateLimiter(tt.opts)
+			if err == nil || err.Error() != tt.message {
+				t.Errorf("expected %q, got %v", tt.message, err)
+			}
+		})
+	}
+}
+
 func TestNewRateLimiter_UnsupportedType(t *testing.T) {
 	opts := &Options{
 		Type:      RateLimiterType("unknown"),
@@ -44,7 +81,7 @@ func TestNewRateLimiter_UnsupportedType(t *testing.T) {
 
 func TestNewRateLimiter_ValidRedisClient(t *testing.T) {
 	redis.SetConnectionConfig("testserver", &redis.ConnectionConfig{Address: "localhost:6379"})
-	client, err := redis.Connect(&redis.RedisConnector{}, "testserver")
+	client, err := redis.Connect(context.Background(), &redis.RedisConnector{}, "testserver")
 	if err != nil {
 		t.Fatalf("failed to connect to Redis: %v", err)
 	}

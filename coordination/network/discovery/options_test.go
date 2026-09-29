@@ -21,6 +21,11 @@ func TestOptions_Validate(t *testing.T) {
 		wantErr error
 	}{
 		{
+			name:    "nil options",
+			opts:    nil,
+			wantErr: errors.New("options are required"),
+		},
+		{
 			name:    "missing provider",
 			opts:    &Options{Address: "localhost:8500", Logger: validLogger},
 			wantErr: errors.New("provider type is required"),

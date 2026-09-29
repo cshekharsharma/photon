@@ -53,7 +53,7 @@ func StartWorkers(ctx context.Context) {
 		Level:    logger.LogLevelInfo,
 	})
 
-	workers.StartOverseerWithContext(ctx, []*workers.WorkerConfig{
+	workers.StartOverseer(ctx, []*workers.WorkerConfig{
 		{
 			Name:      "email-dispatcher",
 			MaxCount:  2,
@@ -89,4 +89,3 @@ func pollAndSendEmail(ctx context.Context) error {
 	return errors.New("transient queue read failure")
 }
 ```
-

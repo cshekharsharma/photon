@@ -11,4 +11,7 @@ var (
 	// ErrLockNotHeld is returned when attempting to unlock or extend a lock that the caller
 	// does not own. It ensures that only the holder of the lock can modify or release it.
 	ErrLockNotHeld = errors.New("lock not held")
+
+	ErrNilLockContext  = errors.New("context cannot be nil")
+	ErrNilLockFunction = errors.New("distributed lock function cannot be nil")
 )

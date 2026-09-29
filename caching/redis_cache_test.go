@@ -96,7 +96,7 @@ func TestRedisCache_Exists(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	exists, err := cache.Exists(req)
+	exists, err := cache.Exists(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, exists)
@@ -119,7 +119,7 @@ func TestRedisCache_Get(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	value, err := cache.Get(req)
+	value, err := cache.Get(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedValue, value)
@@ -138,7 +138,7 @@ func TestRedisCache_Get_NotFound(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	value, err := cache.Get(req)
+	value, err := cache.Get(context.Background(), req)
 	assert.NoError(t, err)
 	assert.Nil(t, value)
 
@@ -156,7 +156,7 @@ func TestRedisCache_Get_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	value, err := cache.Get(req)
+	value, err := cache.Get(context.Background(), req)
 	assert.Error(t, err)
 	assert.Nil(t, value)
 
@@ -179,7 +179,7 @@ func TestRedisCache_Set(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	success, err := cache.Set(req)
+	success, err := cache.Set(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, success)
@@ -199,7 +199,7 @@ func TestRedisCache_Set_SerialiseError(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	success, err := cache.Set(req)
+	success, err := cache.Set(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, success)
 }
@@ -217,7 +217,7 @@ func TestRedisCache_Delete(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	success, err := cache.Delete(req)
+	success, err := cache.Delete(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, success)
@@ -239,7 +239,7 @@ func TestRedisCache_MultiGet(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiGet(req)
+	result, err := cache.MultiGet(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "v1", result["k1"])
@@ -260,7 +260,7 @@ func TestRedisCache_MultiGet_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiGet(req)
+	result, err := cache.MultiGet(context.Background(), req)
 	assert.Error(t, err)
 	assert.Nil(t, result)
 
@@ -304,7 +304,7 @@ func TestRedisCache_MultiSet(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, result["k1"])
@@ -338,7 +338,7 @@ func TestRedisCache_MultiSet_SerialiseError(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, result["k1"])
 	assert.True(t, result["k2"])
@@ -368,7 +368,7 @@ func TestRedisCache_MultiSet_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, result["k1"])
 
@@ -392,7 +392,7 @@ func TestRedisCache_MultiSet_CommandErrorWithoutPipelineError(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, result["k1"])
 
@@ -414,7 +414,7 @@ func TestRedisCache_MultiSet_MissingStatus(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 	assert.NoError(t, err)
 	assert.False(t, result["k1"])
 
@@ -429,7 +429,7 @@ func TestRedisCache_MultiSet_NoSerializableCommands(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiSet(req)
+	result, err := cache.MultiSet(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, result["k1"])
 
@@ -472,7 +472,7 @@ func TestRedisCache_MultiDelete(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiDelete(req)
+	result, err := cache.MultiDelete(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, result["k1"])
@@ -496,7 +496,7 @@ func TestRedisCache_MultiDelete_PartialMiss(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiDelete(req)
+	result, err := cache.MultiDelete(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.True(t, result["k1"])
@@ -516,7 +516,7 @@ func TestRedisCache_MultiDelete_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	result, err := cache.MultiDelete(req)
+	result, err := cache.MultiDelete(context.Background(), req)
 	assert.Error(t, err)
 	assert.False(t, result["k1"])
 
@@ -549,20 +549,20 @@ func TestRedisCache_ContextMethodsNilContext(t *testing.T) {
 		return []*redisv9.StatusCmd{redisv9.NewStatusResult("OK", nil)}, nil
 	}
 
-	assert.True(t, mustBool(cache.ExistsContext(nilCtx, &ExistsRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
-	assert.Equal(t, []byte("value"), mustAny(cache.GetContext(nilCtx, &GetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
-	assert.True(t, mustBool(cache.SetContext(nilCtx, &SetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: "v", TTL: 1})))
-	assert.True(t, mustBool(cache.DeleteContext(nilCtx, &DeleteRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
-	assert.NotNil(t, mustMap(cache.MultiGetContext(nilCtx, &MultiGetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Keys: []string{"k"}})))
-	assert.NotNil(t, mustMapBool(cache.MultiSetContext(nilCtx, &MultiSetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, ValueMap: map[string]any{"k": "v"}})))
-	assert.NotNil(t, mustMapBool(cache.MultiDeleteContext(nilCtx, &MultiDeleteRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Keys: []string{"k"}})))
-	assert.NoError(t, cache.IncrementContext(nilCtx, &IncrementRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: 1}))
-	assert.NoError(t, cache.DecrementContext(nilCtx, &DecrementRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: 1}))
-	assert.NoError(t, cache.AppendContext(nilCtx, &AppendRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: "v"}))
-	ttl, err := cache.GetTTLContext(nilCtx, &GetTTLRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})
+	assert.True(t, mustBool(cache.Exists(nilCtx, &ExistsRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
+	assert.Equal(t, []byte("value"), mustAny(cache.Get(nilCtx, &GetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
+	assert.True(t, mustBool(cache.Set(nilCtx, &SetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: "v", TTL: 1})))
+	assert.True(t, mustBool(cache.Delete(nilCtx, &DeleteRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})))
+	assert.NotNil(t, mustMap(cache.MultiGet(nilCtx, &MultiGetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Keys: []string{"k"}})))
+	assert.NotNil(t, mustMapBool(cache.MultiSet(nilCtx, &MultiSetRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, ValueMap: map[string]any{"k": "v"}})))
+	assert.NotNil(t, mustMapBool(cache.MultiDelete(nilCtx, &MultiDeleteRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Keys: []string{"k"}})))
+	assert.NoError(t, cache.Increment(nilCtx, &IncrementRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: 1}))
+	assert.NoError(t, cache.Decrement(nilCtx, &DecrementRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: 1}))
+	assert.NoError(t, cache.Append(nilCtx, &AppendRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", Value: "v"}))
+	ttl, err := cache.GetTTL(nilCtx, &GetTTLRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k"})
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), ttl)
-	assert.NoError(t, cache.SetTTLContext(nilCtx, &SetTTLRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", TTL: 1}))
+	assert.NoError(t, cache.SetTTL(nilCtx, &SetTTLRequest{cacheRequest: cacheRequest{Namespace: "testns", Collection: "testcol"}, Key: "k", TTL: 1}))
 
 	mockRedis.AssertExpectations(t)
 	mockClient.AssertExpectations(t)
@@ -585,48 +585,48 @@ func TestRedisCache_ContextMethodsCanceled(t *testing.T) {
 		run  func() error
 	}{
 		{"Exists", func() error {
-			_, err := cache.ExistsContext(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Exists(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Get", func() error {
-			_, err := cache.GetContext(ctx, &GetRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Get(ctx, &GetRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Set", func() error {
-			_, err := cache.SetContext(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
+			_, err := cache.Set(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
 			return err
 		}},
 		{"Delete", func() error {
-			_, err := cache.DeleteContext(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Delete(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"MultiGet", func() error {
-			_, err := cache.MultiGetContext(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiGet(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"MultiSet", func() error {
-			_, err := cache.MultiSetContext(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
+			_, err := cache.MultiSet(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
 			return err
 		}},
 		{"MultiDelete", func() error {
-			_, err := cache.MultiDeleteContext(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiDelete(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"Increment", func() error {
-			return cache.IncrementContext(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return cache.Increment(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Decrement", func() error {
-			return cache.DecrementContext(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return cache.Decrement(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Append", func() error {
-			return cache.AppendContext(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
+			return cache.Append(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
 		}},
 		{"GetTTL", func() error {
-			_, err := cache.GetTTLContext(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.GetTTL(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"SetTTL", func() error {
-			return cache.SetTTLContext(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
+			return cache.SetTTL(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
 		}},
 	}
 
@@ -652,7 +652,7 @@ func TestRedisCache_Increment(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.Increment(req)
+	err := cache.Increment(context.Background(), req)
 
 	assert.NoError(t, err)
 
@@ -674,7 +674,7 @@ func TestRedisCache_Decrement(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.Decrement(req)
+	err := cache.Decrement(context.Background(), req)
 
 	assert.NoError(t, err)
 
@@ -696,7 +696,7 @@ func TestRedisCache_Append(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.Append(req)
+	err := cache.Append(context.Background(), req)
 
 	assert.NoError(t, err)
 
@@ -717,7 +717,7 @@ func TestRedisCache_Append_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.Append(req)
+	err := cache.Append(context.Background(), req)
 	assert.Error(t, err)
 
 	mockRedis.AssertExpectations(t)
@@ -740,7 +740,7 @@ func TestRedisCache_Append_SerialiseError(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.Append(req)
+	err := cache.Append(context.Background(), req)
 	assert.Error(t, err)
 }
 
@@ -757,7 +757,7 @@ func TestRedisCache_GetTTL(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	ttl, err := cache.GetTTL(req)
+	ttl, err := cache.GetTTL(context.Background(), req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, int64(120), ttl)
@@ -776,7 +776,7 @@ func TestRedisCache_GetTTL_Error(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	ttl, err := cache.GetTTL(req)
+	ttl, err := cache.GetTTL(context.Background(), req)
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), ttl)
 
@@ -798,7 +798,7 @@ func TestRedisCache_SetTTL(t *testing.T) {
 	req.SetNamespace("testns")
 	req.SetCollection("testcol")
 
-	err := cache.SetTTL(req)
+	err := cache.SetTTL(context.Background(), req)
 
 	assert.NoError(t, err)
 

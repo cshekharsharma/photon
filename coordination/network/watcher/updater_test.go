@@ -51,3 +51,20 @@ func TestPushToContentUpdateChannelFn_IsSameAsPush(t *testing.T) {
 		t.Fatal("PushToContentUpdateChannelFn should not be nil")
 	}
 }
+
+func TestSendUpdateEdges(t *testing.T) {
+	if sendUpdate(nil, &UpdaterSchema{}) {
+		t.Fatal("expected nil channel send to fail")
+	}
+	if sendUpdate(make(chan *UpdaterSchema, 1), nil) {
+		t.Fatal("expected nil schema send to fail")
+	}
+
+	ch := make(chan *UpdaterSchema, 1)
+	if !sendUpdate(ch, &UpdaterSchema{Content: "first"}) {
+		t.Fatal("expected first send to succeed")
+	}
+	if sendUpdate(ch, &UpdaterSchema{Content: "second"}) {
+		t.Fatal("expected full channel send to fail")
+	}
+}

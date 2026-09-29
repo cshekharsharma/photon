@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestSecurityHeaders(t *testing.T) {
+func TestSecurityHeadersOptions(t *testing.T) {
 	handled := false
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handled = true
@@ -16,7 +16,7 @@ func TestSecurityHeaders(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com/foo", nil)
 	rec := httptest.NewRecorder()
 
-	handlerToTest := SecurityHeaders(nextHandler)
+	handlerToTest := SecurityHeaders(SecurityHeadersOptions{})(nextHandler)
 
 	handlerToTest.ServeHTTP(rec, req)
 
@@ -52,7 +52,7 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 }
 
-func TestSecurityHeadersWithOptions(t *testing.T) {
+func TestSecurityHeaders(t *testing.T) {
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("ok"))
@@ -61,7 +61,7 @@ func TestSecurityHeadersWithOptions(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com/foo", nil)
 	rec := httptest.NewRecorder()
 
-	handlerToTest := SecurityHeadersWithOptions(SecurityHeadersOptions{
+	handlerToTest := SecurityHeaders(SecurityHeadersOptions{
 		XFrameOptions:           "SAMEORIGIN",
 		XContentTypeOptions:     "-",
 		ReferrerPolicy:          "strict-origin",

@@ -55,11 +55,7 @@ var (
 // StartOverseer initializes the overseer with a list of workers and a logger,
 // ensuring it only starts once. It launches the overseer loop in a separate goroutine.
 // The overseer manages lifecycle of workers and restarts them upon failure.
-func StartOverseer(workers []*WorkerConfig, logger logger.Logger) {
-	StartOverseerWithContext(context.Background(), workers, logger, nil)
-}
-
-func StartOverseerWithContext(ctx context.Context, workers []*WorkerConfig, logger logger.Logger, options *OverseerOptions) {
+func StartOverseer(ctx context.Context, workers []*WorkerConfig, logger logger.Logger, options *OverseerOptions) {
 	ctx = normalizeOverseerContext(ctx)
 	startOnce.Do(func() {
 		workerList = cloneWorkerConfigs(workers)
@@ -73,7 +69,7 @@ func StartOverseerWithContext(ctx context.Context, workers []*WorkerConfig, logg
 		startWorkers := true
 
 		workerlogger.Info("[Overseer] Starting overseer job with %d workers: %v", len(workerList), workerList)
-		go executeOverseerWithContext(ctx, startWorkers)
+		go executeOverseer(ctx, startWorkers)
 	})
 }
 
@@ -87,11 +83,7 @@ func normalizeOverseerContext(ctx context.Context) context.Context {
 // executeOverseer is the main loop that initializes the worker pool and monitors it.
 // It includes recovery logic to restart itself in case of internal panic, and enforces
 // a restart rate limit to avoid infinite crash loops.
-func executeOverseer(startWorkers bool) {
-	executeOverseerWithContext(context.Background(), startWorkers)
-}
-
-func executeOverseerWithContext(ctx context.Context, startWorkers bool) {
+func executeOverseer(ctx context.Context, startWorkers bool) {
 	ctx = normalizeOverseerContext(ctx)
 	defer notifyExecuteOverseerDone()
 	defer func() {
@@ -123,7 +115,7 @@ func executeOverseerWithContext(ctx context.Context, startWorkers bool) {
 				return
 			case <-time.After(GetOverseerSleepTimeout()):
 			}
-			go executeOverseerWithContext(ctx, false) // restart self
+			go executeOverseer(ctx, false) // restart self
 		}
 	}()
 
@@ -150,8 +142,8 @@ func executeOverseerWithContext(ctx context.Context, startWorkers bool) {
 	notifyWorkerChanInitialized(workerChan)
 
 	if startWorkers {
-		startAllWorkersWithContext(ctx)
+		startAllWorkers(ctx)
 	}
 
-	monitorWorkersWithContext(ctx)
+	monitorWorkers(ctx)
 }

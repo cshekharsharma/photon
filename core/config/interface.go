@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"time"
 )
 
@@ -77,5 +78,5 @@ type Config interface {
 	GetStringMap(key string) map[string]string
 	GetStringSliceMap(key string) map[string][]string
 
-	watchUpdaterChannel()
+	watchUpdaterChannel(ctx context.Context)
 }

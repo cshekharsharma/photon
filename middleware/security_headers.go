@@ -23,14 +23,8 @@ type SecurityHeadersOptions struct {
 	ContentSecurityPolicy   string
 }
 
-// Add security http headers to the response object, to avoid the
-// common security loopholes and threats. In future more sophisticated
-// security hooks can also be added here.
-func SecurityHeaders(next http.Handler) http.Handler {
-	return SecurityHeadersWithOptions(SecurityHeadersOptions{})(next)
-}
-
-func SecurityHeadersWithOptions(options SecurityHeadersOptions) func(http.Handler) http.Handler {
+// SecurityHeaders returns middleware that adds security HTTP headers.
+func SecurityHeaders(options SecurityHeadersOptions) func(http.Handler) http.Handler {
 	normalized := normalizeSecurityHeadersOptions(options)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

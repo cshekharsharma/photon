@@ -112,11 +112,7 @@ func applyAerospikeDeadline(ctx context.Context, policy *aerov8.BasePolicy) {
 
 // Exists checks if a given key exists in the Aerospike store using the provided ExistsRequest.
 // Returns true if the key exists, otherwise false with an error if any occurs.
-func (a *AerospikeCache) Exists(request *ExistsRequest) (bool, error) {
-	return a.ExistsContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) ExistsContext(ctx context.Context, request *ExistsRequest) (bool, error) {
+func (a *AerospikeCache) Exists(ctx context.Context, request *ExistsRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -144,11 +140,7 @@ func (a *AerospikeCache) ExistsContext(ctx context.Context, request *ExistsReque
 
 // Get retrieves the value for a given key and optional fields from Aerospike using the provided GetRequest.
 // Returns the bin map associated with the key, or an error if the retrieval fails.
-func (a *AerospikeCache) Get(request *GetRequest) (any, error) {
-	return a.GetContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) GetContext(ctx context.Context, request *GetRequest) (any, error) {
+func (a *AerospikeCache) Get(ctx context.Context, request *GetRequest) (any, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -176,11 +168,7 @@ func (a *AerospikeCache) GetContext(ctx context.Context, request *GetRequest) (a
 
 // Set stores the given fields in Aerospike under the specified key using the SetRequest.
 // Returns true on successful set, or false and an error if the operation fails.
-func (a *AerospikeCache) Set(request *SetRequest) (bool, error) {
-	return a.SetContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) SetContext(ctx context.Context, request *SetRequest) (bool, error) {
+func (a *AerospikeCache) Set(ctx context.Context, request *SetRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -213,11 +201,7 @@ func (a *AerospikeCache) SetContext(ctx context.Context, request *SetRequest) (b
 
 // Delete removes a record from Aerospike for the specified key provided in the DeleteRequest.
 // Returns true if the key was deleted, false otherwise along with an error.
-func (a *AerospikeCache) Delete(request *DeleteRequest) (bool, error) {
-	return a.DeleteContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) DeleteContext(ctx context.Context, request *DeleteRequest) (bool, error) {
+func (a *AerospikeCache) Delete(ctx context.Context, request *DeleteRequest) (bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return false, err
@@ -245,11 +229,7 @@ func (a *AerospikeCache) DeleteContext(ctx context.Context, request *DeleteReque
 
 // MultiGet retrieves multiple records from Aerospike for a list of keys provided in the MultiGetRequest.
 // Returns a map of key to bin map for each found key, or an error if the operation fails.
-func (a *AerospikeCache) MultiGet(request *MultiGetRequest) (map[string]any, error) {
-	return a.MultiGetContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) MultiGetContext(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
+func (a *AerospikeCache) MultiGet(ctx context.Context, request *MultiGetRequest) (map[string]any, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -284,11 +264,7 @@ func (a *AerospikeCache) MultiGetContext(ctx context.Context, request *MultiGetR
 
 // MultiSet sets multiple records in Aerospike using the provided MultiSetRequest.
 // Returns a map of key to boolean indicating whether each record was successfully written.
-func (a *AerospikeCache) MultiSet(request *MultiSetRequest) (map[string]bool, error) {
-	return a.MultiSetContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) MultiSetContext(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
+func (a *AerospikeCache) MultiSet(ctx context.Context, request *MultiSetRequest) (map[string]bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -330,11 +306,7 @@ func (a *AerospikeCache) MultiSetContext(ctx context.Context, request *MultiSetR
 
 // MultiDelete deletes multiple records in Aerospike based on the keys in the MultiDeleteRequest.
 // Returns a map of key to boolean indicating whether each record was successfully deleted.
-func (a *AerospikeCache) MultiDelete(request *MultiDeleteRequest) (map[string]bool, error) {
-	return a.MultiDeleteContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) MultiDeleteContext(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
+func (a *AerospikeCache) MultiDelete(ctx context.Context, request *MultiDeleteRequest) (map[string]bool, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return nil, err
@@ -369,11 +341,7 @@ func (a *AerospikeCache) MultiDeleteContext(ctx context.Context, request *MultiD
 
 // Increment performs atomic addition on one or more bins in a record specified in the IncrementRequest.
 // Returns an error if any part of the operation fails.
-func (a *AerospikeCache) Increment(request *IncrementRequest) error {
-	return a.IncrementContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) IncrementContext(ctx context.Context, request *IncrementRequest) error {
+func (a *AerospikeCache) Increment(ctx context.Context, request *IncrementRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -406,11 +374,7 @@ func (a *AerospikeCache) IncrementContext(ctx context.Context, request *Incremen
 
 // Decrement performs atomic subtraction by using AppendOp with negative values from the DecrementRequest.
 // Returns an error if the operation fails.
-func (a *AerospikeCache) Decrement(request *DecrementRequest) error {
-	return a.DecrementContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) DecrementContext(ctx context.Context, request *DecrementRequest) error {
+func (a *AerospikeCache) Decrement(ctx context.Context, request *DecrementRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -443,11 +407,7 @@ func (a *AerospikeCache) DecrementContext(ctx context.Context, request *Decremen
 
 // Append appends the given values to their corresponding bins in a record using the AppendRequest.
 // Returns an error if the operation fails.
-func (a *AerospikeCache) Append(request *AppendRequest) error {
-	return a.AppendContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) AppendContext(ctx context.Context, request *AppendRequest) error {
+func (a *AerospikeCache) Append(ctx context.Context, request *AppendRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err
@@ -480,11 +440,7 @@ func (a *AerospikeCache) AppendContext(ctx context.Context, request *AppendReque
 
 // GetTTL retrieves the TTL (time to live) of a record for a given key using the GetTTLRequest.
 // Returns the TTL in seconds or an error if the retrieval fails.
-func (a *AerospikeCache) GetTTL(request *GetTTLRequest) (int64, error) {
-	return a.GetTTLContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) GetTTLContext(ctx context.Context, request *GetTTLRequest) (int64, error) {
+func (a *AerospikeCache) GetTTL(ctx context.Context, request *GetTTLRequest) (int64, error) {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return 0, err
@@ -512,11 +468,7 @@ func (a *AerospikeCache) GetTTLContext(ctx context.Context, request *GetTTLReque
 
 // SetTTL updates the TTL for a given key using the SetTTLRequest.
 // Returns an error if the TTL update operation fails.
-func (a *AerospikeCache) SetTTL(request *SetTTLRequest) error {
-	return a.SetTTLContext(context.Background(), request)
-}
-
-func (a *AerospikeCache) SetTTLContext(ctx context.Context, request *SetTTLRequest) error {
+func (a *AerospikeCache) SetTTL(ctx context.Context, request *SetTTLRequest) error {
 	ctx, err := checkedCacheContext(ctx)
 	if err != nil {
 		return err

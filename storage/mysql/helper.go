@@ -94,7 +94,7 @@ func queryMySQLHelperOperation(
 	query string,
 	args ...interface{},
 ) (*sql.Rows, error) {
-	rows, err := dbctx.QueryContext(ctx, query, args...)
+	rows, err := dbctx.Query(ctx, query, args...)
 	notifyMySQLHelperOperation(operation, query, args, err)
 	return rows, err
 }
@@ -106,7 +106,7 @@ func execMySQLHelperOperation(
 	query string,
 	args ...interface{},
 ) (sql.Result, error) {
-	result, err := dbctx.ExecContext(ctx, query, args...)
+	result, err := dbctx.Exec(ctx, query, args...)
 	notifyMySQLHelperOperation(operation, query, args, err)
 	return result, err
 }
@@ -123,11 +123,7 @@ func execMySQLHelperOperation(
 // Returns:
 //   - []map[string]interface{}: list of result rows.
 //   - error: any error encountered while querying.
-func ExecuteReadQuery(dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]interface{}, error) {
-	return ExecuteReadQueryContext(context.Background(), dbctx, queryInput)
-}
-
-func ExecuteReadQueryContext(ctx context.Context, dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]interface{}, error) {
+func ExecuteReadQuery(ctx context.Context, dbctx *DBContext, queryInput ReadQueryInput) ([]map[string]interface{}, error) {
 	if dbctx == nil {
 		return nil, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -191,11 +187,7 @@ func ExecuteReadQueryContext(ctx context.Context, dbctx *DBContext, queryInput R
 //   - rows affected
 //   - last insert ID (0 if not applicable)
 //   - error if any.
-func ExecuteWriteQuery(dbctx *DBContext, query string, params []interface{}) (int64, int64, error) {
-	return ExecuteWriteQueryContext(context.Background(), dbctx, query, params)
-}
-
-func ExecuteWriteQueryContext(ctx context.Context, dbctx *DBContext, query string, params []interface{}) (int64, int64, error) {
+func ExecuteWriteQuery(ctx context.Context, dbctx *DBContext, query string, params []interface{}) (int64, int64, error) {
 	if dbctx == nil {
 		return 0, 0, fmt.Errorf("nil DB context provided, cannot execute the query")
 	}
@@ -231,11 +223,7 @@ func ExecuteWriteQueryContext(ctx context.Context, dbctx *DBContext, query strin
 // Returns:
 //   - rows affected
 //   - error if any.
-func MultiInsertFromStructsArray[T any](dbctx *DBContext, tableName string, data []T) (int64, error) {
-	return MultiInsertFromStructsArrayContext(context.Background(), dbctx, tableName, data)
-}
-
-func MultiInsertFromStructsArrayContext[T any](ctx context.Context, dbctx *DBContext, tableName string, data []T) (int64, error) {
+func MultiInsertFromStructsArray[T any](ctx context.Context, dbctx *DBContext, tableName string, data []T) (int64, error) {
 	if len(data) == 0 {
 		return 0, fmt.Errorf("input data array is empty")
 	}
@@ -445,11 +433,7 @@ func mysqlInsertFieldValue(value reflect.Value, field reflect.StructField) (inte
 //   - rows affected
 //   - last insert ID
 //   - error if any.
-func InsertFromStruct(dbctx *DBContext, tableName string, data interface{}) (int64, int64, error) {
-	return InsertFromStructContext(context.Background(), dbctx, tableName, data)
-}
-
-func InsertFromStructContext(ctx context.Context, dbctx *DBContext, tableName string, data interface{}) (int64, int64, error) {
+func InsertFromStruct(ctx context.Context, dbctx *DBContext, tableName string, data interface{}) (int64, int64, error) {
 	quotedTableName, err := safeMySQLIdent(tableName)
 	if err != nil {
 		return 0, 0, err
@@ -539,11 +523,7 @@ func InsertFromStructContext(ctx context.Context, dbctx *DBContext, tableName st
 //   - rows affected
 //   - last insert ID
 //   - error if any.
-func InsertFromMap(dbctx *DBContext, tableName string, data map[string]interface{}) (int64, int64, error) {
-	return InsertFromMapContext(context.Background(), dbctx, tableName, data)
-}
-
-func InsertFromMapContext(ctx context.Context, dbctx *DBContext, tableName string, data map[string]interface{}) (int64, int64, error) {
+func InsertFromMap(ctx context.Context, dbctx *DBContext, tableName string, data map[string]interface{}) (int64, int64, error) {
 	quotedTableName, err := safeMySQLIdent(tableName)
 	if err != nil {
 		return 0, 0, err
@@ -609,11 +589,7 @@ func InsertFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 // Returns:
 //   - number of rows affected
 //   - error if any.
-func UpdateFromMap(dbctx *DBContext, tableName string, data map[string]interface{}, where string, params ...interface{}) (int64, error) {
-	return UpdateFromMapContext(context.Background(), dbctx, tableName, data, where, params...)
-}
-
-func UpdateFromMapContext(ctx context.Context, dbctx *DBContext, tableName string, data map[string]interface{}, where string, params ...interface{}) (int64, error) {
+func UpdateFromMap(ctx context.Context, dbctx *DBContext, tableName string, data map[string]interface{}, where string, params ...interface{}) (int64, error) {
 	quotedTableName, err := safeMySQLIdent(tableName)
 	if err != nil {
 		return 0, err
@@ -675,11 +651,7 @@ func UpdateFromMapContext(ctx context.Context, dbctx *DBContext, tableName strin
 // Returns:
 //   - number of rows deleted
 //   - error if any.
-func DeleteByPrimaryKey(dbctx *DBContext, tableName, pkColumn string, pkValue interface{}) (int64, error) {
-	return DeleteByPrimaryKeyContext(context.Background(), dbctx, tableName, pkColumn, pkValue)
-}
-
-func DeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName, pkColumn string, pkValue interface{}) (int64, error) {
+func DeleteByPrimaryKey(ctx context.Context, dbctx *DBContext, tableName, pkColumn string, pkValue interface{}) (int64, error) {
 	quotedTableName, err := safeMySQLIdent(tableName)
 	if err != nil {
 		return 0, err
@@ -720,11 +692,7 @@ func DeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName,
 // Returns:
 //   - number of rows updated
 //   - error if any.
-func SoftDeleteByPrimaryKey(dbctx *DBContext, tableName, deleteCol, pkCol string, value interface{}) (int64, error) {
-	return SoftDeleteByPrimaryKeyContext(context.Background(), dbctx, tableName, deleteCol, pkCol, value)
-}
-
-func SoftDeleteByPrimaryKeyContext(ctx context.Context, dbctx *DBContext, tableName, deleteCol, pkCol string, value interface{}) (int64, error) {
+func SoftDeleteByPrimaryKey(ctx context.Context, dbctx *DBContext, tableName, deleteCol, pkCol string, value interface{}) (int64, error) {
 	quotedTableName, err := safeMySQLIdent(tableName)
 	if err != nil {
 		return 0, err

@@ -103,7 +103,7 @@ func TestConnect_NewConnection(t *testing.T) {
 
 	connector.On("New", mock.Anything).Return(mockRedis)
 
-	client, err := Connect(connector, "test")
+	client, err := Connect(context.Background(), connector, "test")
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 }
@@ -114,7 +114,7 @@ func TestConnect_NoConfigError(t *testing.T) {
 	mockRedis := new(mockRedis)
 	connector.On("New", mock.Anything).Return(mockRedis)
 
-	client, err := Connect(connector, "nonexistent")
+	client, err := Connect(context.Background(), connector, "nonexistent")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
@@ -129,12 +129,12 @@ func TestConnect_NewInstanceError(t *testing.T) {
 		Address: "localhost:6379",
 	})
 
-	client, err := Connect(connector, "test-connect-new-instance-error")
+	client, err := Connect(context.Background(), connector, "test-connect-new-instance-error")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
 
-func TestConnectContext_EdgeCases(t *testing.T) {
+func TestConnect_EdgeCases(t *testing.T) {
 	resetRedisTestState()
 
 	connector := new(mockRedisConnector)
@@ -143,37 +143,37 @@ func TestConnectContext_EdgeCases(t *testing.T) {
 
 	SetConnectionConfig("nil-context", &ConnectionConfig{Address: "localhost:6379"})
 	var nilCtx context.Context
-	client, err := ConnectContext(nilCtx, connector, "nil-context")
+	client, err := Connect(nilCtx, connector, "nil-context")
 	assert.NoError(t, err)
 	assert.Equal(t, mockRedis, client)
 
-	client, err = ConnectContext(context.Background(), connector, "nil-context")
+	client, err = Connect(context.Background(), connector, "nil-context")
 	assert.NoError(t, err)
 	assert.Equal(t, mockRedis, client)
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	client, err = ConnectContext(cancelled, connector, "nil-context")
+	client, err = Connect(cancelled, connector, "nil-context")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
 
-func TestConnectContext_NilConfigMap(t *testing.T) {
+func TestConnect_NilConfigMap(t *testing.T) {
 	resetRedisTestState()
 
 	connector := new(mockRedisConnector)
-	client, err := ConnectContext(context.Background(), connector, "missing")
+	client, err := Connect(context.Background(), connector, "missing")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }
 
-func TestConnectContext_MissingConfigInNonEmptyMap(t *testing.T) {
+func TestConnect_MissingConfigInNonEmptyMap(t *testing.T) {
 	resetRedisTestState()
 
 	SetConnectionConfig("other", &ConnectionConfig{Address: "localhost:6379"})
 	connector := new(mockRedisConnector)
 
-	client, err := ConnectContext(context.Background(), connector, "missing")
+	client, err := Connect(context.Background(), connector, "missing")
 	assert.Error(t, err)
 	assert.Nil(t, client)
 }

@@ -30,7 +30,7 @@ func TestInitTelemetry_ResourceCreationError(t *testing.T) {
 		return nil, errors.New("resource creation failed")
 	}
 
-	_, err := InitTelemetry(&Options{
+	_, err := InitTelemetry(context.Background(), &Options{
 		ServiceName: "svc",
 		Environment: EnvDevelopment,
 		SampleRate:  DefaultSampleRate,
@@ -43,7 +43,7 @@ func TestInitTelemetry_ResourceCreationError(t *testing.T) {
 	}
 }
 
-func TestInitTelemetryContextUsesCallerContext(t *testing.T) {
+func TestInitTelemetryUsesCallerContext(t *testing.T) {
 	testMutex.Lock()
 	defer testMutex.Unlock()
 
@@ -58,7 +58,7 @@ func TestInitTelemetryContextUsesCallerContext(t *testing.T) {
 	}
 
 	telemetry = nil
-	got, err := InitTelemetryContext(expectedCtx, &Options{
+	got, err := InitTelemetry(expectedCtx, &Options{
 		ServiceName: "svc",
 		Environment: EnvDevelopment,
 		SampleRate:  DefaultSampleRate,

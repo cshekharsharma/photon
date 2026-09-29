@@ -34,7 +34,7 @@ func TestNew_BuildStoreError(t *testing.T) {
 	}()
 
 	redisSetConfig = func(name string, cfg *storageredis.ConnectionConfig) {}
-	redisConnect = func(connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
+	redisConnect = func(ctx context.Context, connector storageredis.RedisConnectorInterface, name string) (storageredis.RedisInterface, error) {
 		return nil, errors.New("redis down")
 	}
 

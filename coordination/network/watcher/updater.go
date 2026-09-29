@@ -18,5 +18,17 @@ func PushToContentUpdateChannel(schema *UpdaterSchema, contentSource uint8) {
 	if schema == nil {
 		return
 	}
-	ContentUpdateChannel <- schema
+	sendUpdate(ContentUpdateChannel, schema)
+}
+
+func sendUpdate(ch chan *UpdaterSchema, schema *UpdaterSchema) bool {
+	if ch == nil || schema == nil {
+		return false
+	}
+	select {
+	case ch <- schema:
+		return true
+	default:
+		return false
+	}
 }

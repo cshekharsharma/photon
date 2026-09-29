@@ -35,13 +35,8 @@ type Telemetry struct {
 	loggerProvider log.LoggerProvider
 }
 
-// InitTelemetry initializes OpenTelemetry with the provided options.
-func InitTelemetry(options *Options) (*Telemetry, error) {
-	return InitTelemetryContext(context.Background(), options)
-}
-
-// InitTelemetryContext initializes OpenTelemetry with the provided context and options.
-func InitTelemetryContext(ctx context.Context, options *Options) (*Telemetry, error) {
+// InitTelemetry initializes OpenTelemetry with the provided context and options.
+func InitTelemetry(ctx context.Context, options *Options) (*Telemetry, error) {
 	err := validateOptions(options)
 	if err != nil {
 		return nil, err

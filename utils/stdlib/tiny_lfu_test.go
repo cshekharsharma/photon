@@ -3,15 +3,13 @@ package stdlib
 import "testing"
 
 func TestNewTinyLFU_ConstructorsAndHashRequirement(t *testing.T) {
-	// Classic constructor (defaults AdmitOnEqual=true)
-	lfu, err := NewTinyLFU(4, 64, 0, Hash64String)
+	lfu, err := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	if err != nil || lfu == nil {
 		t.Fatalf("unexpected: %v %v", lfu, err)
 	}
 
-	// Options constructor
 	opt := TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: false, Hash: Hash64String}
-	lfu2, err := NewTinyLFUWithOptions(opt)
+	lfu2, err := NewTinyLFU(opt)
 	if err != nil || lfu2 == nil {
 		t.Fatalf("unexpected options ctor: %v %v", lfu2, err)
 	}
@@ -22,25 +20,25 @@ func TestNewTinyLFU_ConstructorsAndHashRequirement(t *testing.T) {
 			t.Fatalf("expected panic on nil hash")
 		}
 	}()
-	_, _ = NewTinyLFU[string](4, 64, 0, nil)
+	_, _ = NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64})
 }
 
 func TestNewTinyLFU_PropagatesSketchError(t *testing.T) {
 	// Invalid depth -> underlying CMS fails; ensure error is returned
-	_, err := NewTinyLFU(0, 64, 0, Hash64String)
+	_, err := NewTinyLFU(TinyLFUOptions[string]{Depth: 0, Width: 64, AgingEvery: 0, Hash: Hash64String})
 	if err == nil {
 		t.Fatalf("expected error for invalid depth, got nil")
 	}
 
 	// Invalid width via options
-	_, err = NewTinyLFUWithOptions(TinyLFUOptions[string]{Depth: 4, Width: 8, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
+	_, err = NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 8, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	if err == nil {
 		t.Fatalf("expected error for invalid width, got nil")
 	}
 }
 
 func TestTinyLFU_RecordEstimateVictimFreq(t *testing.T) {
-	lfu, _ := NewTinyLFU(4, 64, 0, Hash64String)
+	lfu, _ := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	// Start zeros
 	if got := lfu.Estimate("a"); got != 0 {
 		t.Fatalf("estimate a=%d, want 0", got)
@@ -61,7 +59,7 @@ func TestTinyLFU_RecordEstimateVictimFreq(t *testing.T) {
 }
 
 func TestTinyLFU_RecordNAndNoopZero(t *testing.T) {
-	lfu, _ := NewTinyLFU(4, 64, 0, Hash64String)
+	lfu, _ := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	// n=0 must be a no-op
 	lfu.RecordN("x", 0)
 	if got := lfu.Estimate("x"); got != 0 {
@@ -75,7 +73,7 @@ func TestTinyLFU_RecordNAndNoopZero(t *testing.T) {
 }
 
 func TestTinyLFU_AdmitPolicy_WithAdmitOnEqualTrue(t *testing.T) {
-	lfu, _ := NewTinyLFU(4, 64, 0, Hash64String) // AdmitOnEqual defaults to true
+	lfu, _ := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	// Make a hotter than b
 	lfu.Record("a")
 	lfu.Record("a")
@@ -101,7 +99,7 @@ func TestTinyLFU_AdmitPolicy_WithAdmitOnEqualTrue(t *testing.T) {
 }
 
 func TestTinyLFU_AdmitPolicy_WithAdmitOnEqualFalse(t *testing.T) {
-	lfu, _ := NewTinyLFUWithOptions(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: false, Hash: Hash64String})
+	lfu, _ := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: false, Hash: Hash64String})
 	// Tie should reject when AdmitOnEqual=false
 	if lfu.ShouldAdmit("x", "y") {
 		t.Fatalf("expected reject on tie when AdmitOnEqual=false")
@@ -124,7 +122,7 @@ func TestTinyLFU_AdmitPolicy_WithAdmitOnEqualFalse(t *testing.T) {
 }
 
 func TestTinyLFU_AgeAndResetForwarders(t *testing.T) {
-	lfu, _ := NewTinyLFU(4, 64, 0, Hash64String)
+	lfu, _ := NewTinyLFU(TinyLFUOptions[string]{Depth: 4, Width: 64, AgingEvery: 0, AdmitOnEqual: true, Hash: Hash64String})
 	for i := 0; i < 8; i++ {
 		lfu.Record("k")
 	}

@@ -14,24 +14,11 @@ var (
 	defaultLockRetryInterval = 100 * time.Millisecond // default wait between acquisition attempts
 )
 
-// DistributedLocker is an interface for acquiring and releasing distributed locks.
-// It provides methods to lock, unlock, and extend the expiry of a lock.
+// DistributedLocker executes work while holding a distributed lock.
 type DistributedLocker interface {
-	// Lock attempts to acquire a distributed lock and returns a monotonically
-	// increasing fencing token for the key. Callers must pass this token to the
-	// guarded resource, which should reject writes with tokens older than the
-	// greatest token it has already accepted.
-	Lock(ctx context.Context, key string, expiry time.Duration, retryInterval time.Duration) (uint64, error)
-
-	// FencingToken returns the locally held fencing token for key.
-	FencingToken(key string) (uint64, bool)
-
-	// Unlock releases the lock held by the caller on the specified key.
-	// It checks if the caller is the owner of the lock before releasing it.
-	Unlock(ctx context.Context, key string) error
-
-	// Extend extends the expiry time of the lock held by the caller.
-	Extend(ctx context.Context, key string, extension time.Duration) error
+	// Lock acquires a distributed lock, passes the fencing token to fn, renews
+	// the lock while fn runs, and releases the lock before returning.
+	Lock(ctx context.Context, key string, expiry time.Duration, retryInterval time.Duration, fn func(context.Context, uint64) error) error
 }
 
 // GetDistributedLocker creates a new instance of DistributedLocker based on the provided options.

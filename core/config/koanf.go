@@ -205,11 +205,10 @@ func (k *Koanf) GetStringSliceMap(key string) map[string][]string {
 
 // watchUpdaterChannel listens for configuration updates from the updater channel.
 // It handles the updates based on the source type (file or raw bytes).
-func (k *Koanf) watchUpdaterChannel() {
-	k.watchUpdaterChannelContext(context.Background())
-}
-
-func (k *Koanf) watchUpdaterChannelContext(ctx context.Context) {
+func (k *Koanf) watchUpdaterChannel(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			k.logWatcherError("[Config::Koanf] Error in watchUpdaterChannel: %v", r)
@@ -219,7 +218,7 @@ func (k *Koanf) watchUpdaterChannelContext(ctx context.Context) {
 			if restartHook != nil {
 				restartHook(k) // Restart hook for tests/extensibility.
 			} else if ctx.Err() == nil {
-				k.watchUpdaterChannelContext(ctx) // Default behavior.
+				k.watchUpdaterChannel(ctx) // Default behavior.
 			}
 		}
 	}()

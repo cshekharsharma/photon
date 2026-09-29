@@ -134,10 +134,7 @@ type mockDB struct {
 func (m *mockDB) Close() error {
 	return nil
 }
-func (m *mockDB) Ping() error {
-	return nil
-}
-func (m *mockDB) PingContext(ctx context.Context) error {
+func (m *mockDB) Ping(ctx context.Context) error {
 	return nil
 }
 
@@ -162,9 +159,7 @@ func (m *mockDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, err
 	return nil, nil
 }
 
-func (m *mockDB) Exec(query string, args ...any) (sql.Result, error) { return m.execRes, m.execErr }
-
-func (m *mockDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (m *mockDB) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	m.execCtxCalled++
 	m.lastExecCtx = ctx
 	m.lastExecQuery = query
@@ -172,11 +167,7 @@ func (m *mockDB) ExecContext(ctx context.Context, query string, args ...any) (sq
 	return m.execRes, m.execErr
 }
 
-func (m *mockDB) Query(query string, args ...any) (*sql.Rows, error) {
-	return m.rows, m.qerr
-}
-
-func (m *mockDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (m *mockDB) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	m.queryCtxCalled++
 	m.lastQryCtx = ctx
 	m.lastQueryQuery = query
@@ -184,19 +175,11 @@ func (m *mockDB) QueryContext(ctx context.Context, query string, args ...any) (*
 	return m.rows, m.qerr
 }
 
-func (m *mockDB) QueryRow(query string, args ...any) *sql.Row {
+func (m *mockDB) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
 	return &sql.Row{}
 }
 
-func (m *mockDB) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	return &sql.Row{}
-}
-
-func (m *mockDB) Prepare(query string) (*sql.Stmt, error) {
-	return m.stmt, m.perr
-}
-
-func (m *mockDB) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (m *mockDB) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	m.prepareCtxCalled++
 	m.lastPrepCtx = ctx
 	m.lastPrepQuery = query
@@ -215,7 +198,7 @@ func TestDBContext_Exec(t *testing.T) {
 		},
 	}
 
-	res, err := ctx.Exec("UPDATE x SET y=1", 1, 2)
+	res, err := ctx.Exec(context.Background(), "UPDATE x SET y=1", 1, 2)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -242,7 +225,7 @@ func TestDBContext_Query(t *testing.T) {
 			return nil, nil
 		},
 	}
-	_, err := ctx.Query("SELECT 1")
+	_, err := ctx.Query(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -264,7 +247,7 @@ func TestDBContext_Prepare(t *testing.T) {
 		},
 	}
 
-	_, err := ctx.Prepare("SELECT 1")
+	_, err := ctx.Prepare(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -287,7 +270,7 @@ func TestDBContext_ExecContext(t *testing.T) {
 		},
 	}
 
-	_, err := ctx.ExecContext(context.Background(), "DELETE FROM t WHERE id=$1", 7)
+	_, err := ctx.Exec(context.Background(), "DELETE FROM t WHERE id=$1", 7)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -311,7 +294,7 @@ func TestDBContext_ExecContext(t *testing.T) {
 			return fakeResult{rows: 2}, nil
 		},
 	}
-	_, err = ctx.ExecContext(dctx, "UPDATE t SET a=1")
+	_, err = ctx.Exec(dctx, "UPDATE t SET a=1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -326,7 +309,7 @@ func TestDBContext_PrepareContext(t *testing.T) {
 			return nil, nil
 		},
 	}
-	_, err := ctx.PrepareContext(context.Background(), "SELECT 1")
+	_, err := ctx.Prepare(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -342,7 +325,7 @@ func TestDBContext_PrepareContext_FallbackWithNilContext(t *testing.T) {
 	}
 
 	var nilCtx context.Context = nil
-	_, err := ctx.PrepareContext(nilCtx, "SELECT 1")
+	_, err := ctx.Prepare(nilCtx, "SELECT 1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -363,7 +346,7 @@ func TestDBContext_QueryContext(t *testing.T) {
 			return nil, nil
 		},
 	}
-	_, err := ctx.QueryContext(context.Background(), "SELECT 1")
+	_, err := ctx.Query(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -445,11 +428,11 @@ func TestDBContext_resolveConn(t *testing.T) {
 	}
 }
 
-func TestDBContext_execContext(t *testing.T) {
+func TestDBContext_exec(t *testing.T) {
 	resetGlobals()
 
 	ctx := &DBContext{}
-	_, err := ctx.execContext(context.Background(), "x")
+	_, err := ctx.exec(context.Background(), "x")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -457,7 +440,7 @@ func TestDBContext_execContext(t *testing.T) {
 	// Tx without TxContext => uses Exec()
 	tx := &mockTxNoCtx{execRes: fakeResult{rows: 3}}
 	ctx = &DBContext{Tx: tx}
-	res, err := ctx.execContext(context.Background(), "UPDATE t SET a=1", 1)
+	res, err := ctx.exec(context.Background(), "UPDATE t SET a=1", 1)
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -475,7 +458,7 @@ func TestDBContext_execContext(t *testing.T) {
 	tx2 := &mockTxWithCtx{mockTxNoCtx: mockTxNoCtx{execRes: fakeResult{rows: 4}}}
 	ctx = &DBContext{Tx: tx2}
 
-	_, err = ctx.execContext(context.Background(), "DELETE FROM t", 2)
+	_, err = ctx.exec(context.Background(), "DELETE FROM t", 2)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -486,7 +469,7 @@ func TestDBContext_execContext(t *testing.T) {
 
 	db := &mockDB{execRes: fakeResult{rows: 5}}
 	ctx = &DBContext{Conn: db}
-	_, err = ctx.execContext(context.Background(), "INSERT INTO t(a) VALUES($1)", 1)
+	_, err = ctx.exec(context.Background(), "INSERT INTO t(a) VALUES($1)", 1)
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -505,7 +488,7 @@ func TestDBContext_execContext(t *testing.T) {
 	mu.Unlock()
 
 	ctx = &DBContext{Cluster: cluster}
-	res, err = ctx.execContext(context.Background(), "UPDATE t SET b=2")
+	res, err = ctx.exec(context.Background(), "UPDATE t SET b=2")
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -518,18 +501,18 @@ func TestDBContext_execContext(t *testing.T) {
 
 	resetGlobals()
 	ctx = &DBContext{Cluster: "missing"}
-	_, err = ctx.execContext(context.Background(), "x")
+	_, err = ctx.exec(context.Background(), "x")
 
 	if err == nil {
 		t.Fatal("expected error from Connect")
 	}
 }
 
-func TestDBContext_prepareContext(t *testing.T) {
+func TestDBContext_prepare(t *testing.T) {
 	resetGlobals()
 
 	ctx := &DBContext{}
-	_, err := ctx.prepareContext(context.Background(), "x")
+	_, err := ctx.prepare(context.Background(), "x")
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -537,31 +520,31 @@ func TestDBContext_prepareContext(t *testing.T) {
 
 	tx := &mockTxNoCtx{}
 	ctx = &DBContext{Tx: tx}
-	_, err = ctx.prepareContext(context.Background(), "SELECT 1")
+	_, err = ctx.prepare(context.Background(), "SELECT 1")
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 
 	if tx.prepareCalled != 1 {
-		t.Fatalf("expected tx.Prepare() called")
+		t.Fatalf("expected tx.Prepare(context.Background(), ) called")
 	}
 
 	tx2 := &mockTxWithCtx{}
 	ctx = &DBContext{Tx: tx2}
-	_, err = ctx.prepareContext(context.Background(), "SELECT 2")
+	_, err = ctx.prepare(context.Background(), "SELECT 2")
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 
 	if tx2.prepareCtxCalled != 1 {
-		t.Fatalf("expected tx.PrepareContext() called")
+		t.Fatalf("expected tx.Prepare(context.Background(), ) called")
 	}
 
 	db := &mockDB{}
 	ctx = &DBContext{Conn: db}
-	_, err = ctx.prepareContext(context.Background(), "SELECT 3")
+	_, err = ctx.prepare(context.Background(), "SELECT 3")
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -580,7 +563,7 @@ func TestDBContext_prepareContext(t *testing.T) {
 	mu.Unlock()
 
 	ctx = &DBContext{Cluster: cluster}
-	_, err = ctx.prepareContext(context.Background(), "SELECT 4")
+	_, err = ctx.prepare(context.Background(), "SELECT 4")
 
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -588,45 +571,45 @@ func TestDBContext_prepareContext(t *testing.T) {
 
 	resetGlobals()
 	ctx = &DBContext{Cluster: "missing"}
-	_, err = ctx.prepareContext(context.Background(), "x")
+	_, err = ctx.prepare(context.Background(), "x")
 
 	if err == nil {
 		t.Fatal("expected error from Connect")
 	}
 }
 
-func TestDBContext_queryContext(t *testing.T) {
+func TestDBContext_query(t *testing.T) {
 	resetGlobals()
 
 	ctx := &DBContext{}
-	_, err := ctx.queryContext(context.Background(), "x")
+	_, err := ctx.query(context.Background(), "x")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	tx := &mockTxNoCtx{}
 	ctx = &DBContext{Tx: tx}
-	_, err = ctx.queryContext(context.Background(), "SELECT 1", 1)
+	_, err = ctx.query(context.Background(), "SELECT 1", 1)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 	if tx.queryCalled != 1 {
-		t.Fatalf("expected tx.Query() called")
+		t.Fatalf("expected tx.Query(context.Background(), ) called")
 	}
 
 	tx2 := &mockTxWithCtx{}
 	ctx = &DBContext{Tx: tx2}
-	_, err = ctx.queryContext(context.Background(), "SELECT 2", 2)
+	_, err = ctx.query(context.Background(), "SELECT 2", 2)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 	if tx2.queryCtxCalled != 1 {
-		t.Fatalf("expected tx.QueryContext() called")
+		t.Fatalf("expected tx.Query(context.Background(), ) called")
 	}
 
 	db := &mockDB{}
 	ctx = &DBContext{Conn: db}
-	_, err = ctx.queryContext(context.Background(), "SELECT 3")
+	_, err = ctx.query(context.Background(), "SELECT 3")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -642,14 +625,14 @@ func TestDBContext_queryContext(t *testing.T) {
 	mu.Unlock()
 
 	ctx = &DBContext{Cluster: cluster}
-	_, err = ctx.queryContext(context.Background(), "SELECT 4")
+	_, err = ctx.query(context.Background(), "SELECT 4")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
 
 	resetGlobals()
 	ctx = &DBContext{Cluster: "missing"}
-	_, err = ctx.queryContext(context.Background(), "x")
+	_, err = ctx.query(context.Background(), "x")
 	if err == nil {
 		t.Fatal("expected error from Connect")
 	}
@@ -658,7 +641,7 @@ func TestDBContext_queryContext(t *testing.T) {
 func TestDBContext_Errors_areMeaningful(t *testing.T) {
 	resetGlobals()
 	ctx := &DBContext{}
-	_, err := ctx.ExecContext(context.Background(), "x")
+	_, err := ctx.Exec(context.Background(), "x")
 	if err == nil {
 		t.Fatal("expected error")
 	}

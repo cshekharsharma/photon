@@ -16,7 +16,7 @@ import (
 
 // Initializes telemetry with a dummy OTLP endpoint (mockable)
 func setupNoopTelemetry() {
-	_, err := telemetry.InitTelemetry(&telemetry.Options{
+	_, err := telemetry.InitTelemetry(context.Background(), &telemetry.Options{
 		ServiceName:    "test-service",
 		Environment:    telemetry.EnvDevelopment,
 		SampleRate:     1.0,

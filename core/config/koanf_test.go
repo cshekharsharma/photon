@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"strings"
@@ -178,7 +179,7 @@ func TestKoanf_watchUpdaterChannel_FileSource(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		k.watchUpdaterChannel()
+		k.watchUpdaterChannel(context.Background())
 	}()
 
 	ch <- &watcher.UpdaterSchema{
@@ -231,7 +232,7 @@ func TestKoanf_watchUpdaterChannel_RawBytesSource(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		k.watchUpdaterChannel()
+		k.watchUpdaterChannel(context.Background())
 	}()
 
 	ch <- &watcher.UpdaterSchema{
@@ -271,7 +272,7 @@ func TestKoanf_watchUpdaterChannel_PanicRecovery(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		k.watchUpdaterChannel()
+		k.watchUpdaterChannel(context.Background())
 	}()
 	wg.Wait()
 }
@@ -360,7 +361,7 @@ func TestKoanf_watchUpdaterChannel_RecoversAndRestarts(t *testing.T) {
 	}
 	close(ch)
 
-	k.watchUpdaterChannel()
+	k.watchUpdaterChannel(context.Background())
 	assert.True(t, restarted.Load())
 }
 
@@ -389,8 +390,27 @@ func TestKoanf_watchUpdaterChannel_ReloadError(t *testing.T) {
 	}
 	close(ch)
 
-	k.watchUpdaterChannel()
+	k.watchUpdaterChannel(context.Background())
 	assert.False(t, callbackCalled.Load())
+}
+
+func TestKoanf_watchUpdaterChannel_NilContext(t *testing.T) {
+	k := &Koanf{
+		opts: &Options{
+			WatcherOptions: &watcher.WatcherOptions{
+				Logger: getConsoleLogger("nil-context", &bytes.Buffer{}),
+			},
+		},
+	}
+
+	ch := make(chan *watcher.UpdaterSchema)
+	watcher.ContentUpdateChannel = ch
+	close(ch)
+
+	var nilCtx context.Context
+	assert.NotPanics(t, func() {
+		k.watchUpdaterChannel(nilCtx)
+	})
 }
 
 func TestKoanf_watchUpdaterChannel_FileWriteError(t *testing.T) {
@@ -425,7 +445,7 @@ func TestKoanf_watchUpdaterChannel_FileWriteError(t *testing.T) {
 	}
 	close(ch)
 
-	k.watchUpdaterChannel()
+	k.watchUpdaterChannel(context.Background())
 	assert.False(t, callbackCalled.Load())
 }
 
@@ -466,7 +486,7 @@ func TestKoanf_watchUpdaterChannel_Recovers_DefaultRestartPath(t *testing.T) {
 	close(ch)
 
 	assert.NotPanics(t, func() {
-		k.watchUpdaterChannel()
+		k.watchUpdaterChannel(context.Background())
 	})
 }
 

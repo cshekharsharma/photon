@@ -5,11 +5,7 @@ import (
 	"time"
 )
 
-func scheduleWorkerRestart(cfg *WorkerConfig, failedWorker WorkerInterface) {
-	scheduleWorkerRestartWithContext(context.Background(), cfg, failedWorker)
-}
-
-func scheduleWorkerRestartWithContext(ctx context.Context, cfg *WorkerConfig, failedWorker WorkerInterface) {
+func scheduleWorkerRestart(ctx context.Context, cfg *WorkerConfig, failedWorker WorkerInterface) {
 	ctx = normalizeOverseerContext(ctx)
 	workerName := cfg.Name
 	if failedWorker != nil && failedWorker.GetWorkerName() != "" {
@@ -56,7 +52,7 @@ func scheduleWorkerRestartWithContext(ctx context.Context, cfg *WorkerConfig, fa
 			return
 		case <-timer.C:
 		}
-		launchWorkerFromConfigWithContext(ctx, cfg)
+		launchWorkerFromConfig(ctx, cfg)
 	}()
 }
 

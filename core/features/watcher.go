@@ -18,11 +18,7 @@ var watcherLoopSleepTime = 1 * time.Second
 //
 // Parameters:
 //   - options: Pointer to InitOptions containing configuration and dependencies for the watcher.
-func watchUpdaterChannel(options *InitOptions) {
-	watchUpdaterChannelContext(context.Background(), options)
-}
-
-func watchUpdaterChannelContext(ctx context.Context, options *InitOptions) {
+func watchUpdaterChannel(ctx context.Context, options *InitOptions) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -30,7 +26,7 @@ func watchUpdaterChannelContext(ctx context.Context, options *InitOptions) {
 		if r := recover(); r != nil {
 			options.WatcherOptions.Logger.Error("[FeatureWatch] Error in watchUpdaterChannel: %v", r)
 			if ctx.Err() == nil {
-				watchUpdaterChannelContext(ctx, options) // Restart the watcher in case of panic
+				watchUpdaterChannel(ctx, options) // Restart the watcher in case of panic
 			}
 		}
 	}()

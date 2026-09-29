@@ -9,6 +9,38 @@ import (
 )
 
 func TestNewDiscoveryFactory(t *testing.T) {
+	t.Run("NilContext", func(t *testing.T) {
+		var nilCtx context.Context
+		discovery, err := New(nilCtx, &Options{
+			Provider: ProviderConsul,
+			Address:  "localhost:8500",
+			Logger: logger.Init(&logger.LoggerConfig{
+				Name:     "discovery-nil-context-test",
+				Provider: logger.LoggerProviderZerolog,
+				Type:     logger.LoggerTypeStdout}),
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, discovery)
+	})
+
+	t.Run("CanceledContext", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		discovery, err := New(ctx, &Options{
+			Provider: ProviderConsul,
+			Address:  "localhost:8500",
+			Logger: logger.Init(&logger.LoggerConfig{
+				Name:     "discovery-canceled-context-test",
+				Provider: logger.LoggerProviderZerolog,
+				Type:     logger.LoggerTypeStdout}),
+		})
+
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Nil(t, discovery)
+	})
+
 	t.Run("ValidationFailed", func(t *testing.T) {
 		discovery, err := New(context.Background(), &Options{
 			Provider: "",

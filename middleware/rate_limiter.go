@@ -21,7 +21,7 @@ func RateLimitMiddleware(limiter ratelimiter.Limiter, log logger.Logger, timeout
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
 
-			allowed, err := limiter.Allow(ctx, key)
+			result, err := limiter.Allow(ctx, key)
 			if err != nil {
 				log.Error("Rate limiter error: %v", err)
 				httpcode := apiresponse.InternalServerError
@@ -29,7 +29,11 @@ func RateLimitMiddleware(limiter ratelimiter.Limiter, log logger.Logger, timeout
 				return
 			}
 
-			if !allowed {
+			if !result.Allowed {
+				if result.RetryAfter > 0 {
+					retryAfter := (result.RetryAfter + time.Second - 1) / time.Second
+					w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
+				}
 				httpcode := apiresponse.TooManyRequests
 				apiresponse.New(false, httpcode, nil, "").Send(w, http.StatusTooManyRequests)
 				return

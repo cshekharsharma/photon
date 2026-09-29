@@ -3,6 +3,7 @@ package backoff
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -124,6 +125,37 @@ func TestNewBackoff(t *testing.T) {
 	b := NewBackoff()
 	if b.MinDelay != MinimumDelay || b.MaxDelay != MaximumDelay || b.Factor != ExponentialFactor {
 		t.Error("default values not set correctly in NewBackoff")
+	}
+}
+
+func TestNewBackoff_NormalizesInvalidOptions(t *testing.T) {
+	b := NewBackoff(
+		WithMinDelay(0),
+		WithMaxDelay(-time.Second),
+		WithMaxRetries(-1),
+		WithFactor(1),
+		WithPerAttemptTimeout(-time.Second),
+	)
+
+	if b.MinDelay != MinimumDelay {
+		t.Fatalf("expected default MinDelay, got %v", b.MinDelay)
+	}
+	if b.MaxDelay != MaximumDelay {
+		t.Fatalf("expected default MaxDelay, got %v", b.MaxDelay)
+	}
+	if b.MaxRetries != 0 {
+		t.Fatalf("expected MaxRetries to be 0, got %d", b.MaxRetries)
+	}
+	if b.Factor != ExponentialFactor {
+		t.Fatalf("expected default Factor, got %v", b.Factor)
+	}
+	if b.PerAttemptTimeout != 0 {
+		t.Fatalf("expected PerAttemptTimeout to be 0, got %v", b.PerAttemptTimeout)
+	}
+
+	b = NewBackoff(WithMinDelay(2*time.Second), WithMaxDelay(time.Second))
+	if b.MaxDelay != b.MinDelay {
+		t.Fatalf("expected MaxDelay to match MinDelay, got %v and %v", b.MaxDelay, b.MinDelay)
 	}
 }
 
@@ -282,5 +314,56 @@ func TestRetryDoesNotInvokeCanceledContext(t *testing.T) {
 	}
 	if called {
 		t.Fatal("retry function should not run after context cancellation")
+	}
+}
+
+func TestRetryValidation(t *testing.T) {
+	var nilBackoff *Backoff
+	_, err := nilBackoff.Retry(context.Background(), func(context.Context, ...any) (any, error) {
+		return nil, nil
+	})
+	if !errors.Is(err, ErrNilBackoff) {
+		t.Fatalf("expected ErrNilBackoff, got %v", err)
+	}
+
+	var nilContext context.Context
+	_, err = NewBackoff().Retry(nilContext, func(context.Context, ...any) (any, error) {
+		return nil, nil
+	})
+	if !errors.Is(err, ErrNilContext) {
+		t.Fatalf("expected ErrNilContext, got %v", err)
+	}
+
+	_, err = NewBackoff().Retry(context.Background(), nil)
+	if !errors.Is(err, ErrNilFunction) {
+		t.Fatalf("expected ErrNilFunction, got %v", err)
+	}
+}
+
+func TestRetryPredicates(t *testing.T) {
+	target := errors.New("retry me")
+	wrapped := fmt.Errorf("wrapped: %w", target)
+
+	if !RetryTransient(wrapped) {
+		t.Fatal("expected ordinary error to be transient")
+	}
+	if RetryTransient(nil) {
+		t.Fatal("nil error should not be transient")
+	}
+	if RetryTransient(context.Canceled) {
+		t.Fatal("context.Canceled should not be transient")
+	}
+	if RetryTransient(context.DeadlineExceeded) {
+		t.Fatal("context.DeadlineExceeded should not be transient")
+	}
+
+	if !RetryIfErrorIs(target)(wrapped) {
+		t.Fatal("expected target error to match")
+	}
+	if RetryIfAny(nil, RetryIfErrorIs(target))(wrapped) != true {
+		t.Fatal("expected any predicate to match")
+	}
+	if RetryIfAny(nil)(wrapped) {
+		t.Fatal("nil predicates should not match")
 	}
 }

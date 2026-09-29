@@ -25,6 +25,9 @@ type Options struct {
 // Validate checks if the required fields in Options are set.
 // It returns an error if any required field is missing or invalid.
 func (o *Options) Validate() error {
+	if o == nil {
+		return errors.New("options are required")
+	}
 	if o.Provider == "" {
 		return errors.New("provider type is required")
 	}

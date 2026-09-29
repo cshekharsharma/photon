@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/cshekharsharma/photon/core/logger"
@@ -32,25 +30,14 @@ type stoppableServer interface {
 	Stop()
 }
 
-// StartGRPCServer starts a gRPC server using the provided ServerOptions. It supports TLS or
+// StartGRPCServer starts a gRPC server using the provided context and ServerOptions. It supports TLS or
 // insecure mode, health check service, reflection for debugging, chained interceptors,
-// and graceful shutdown on SIGINT or SIGTERM. If RegisterFunc is provided, it is used to
-// register the application-specific services. Any missing options are populated with defaults
-// via DefaultServerOptions.
-func StartGRPCServer(opts *ServerOptions) error {
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGHUP,
-		syscall.SIGQUIT,
-	)
-	defer stop()
-	return StartGRPCServerContext(ctx, opts)
-}
-
-// StartGRPCServerContext starts a gRPC server and shuts it down when ctx is canceled.
-func StartGRPCServerContext(ctx context.Context, opts *ServerOptions) error {
+// and graceful shutdown when ctx is canceled. If RegisterFunc is provided, it is used
+// to register the application-specific services. Any missing options are populated with defaults.
+func StartGRPCServer(ctx context.Context, opts *ServerOptions) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	opts = DefaultServerOptions(opts)
 
 	if opts.TLSConfig == nil && !opts.Insecure {

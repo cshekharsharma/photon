@@ -73,7 +73,7 @@ func setupTestCache(t *testing.T) (*MemcachedCache, *mocks.MockMemcachedClient) 
 func TestMemcachedExists_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(&memcache.Item{Value: []byte("val")}, nil)
-	exists, err := cache.Exists(&ExistsRequest{Key: "key"})
+	exists, err := cache.Exists(context.Background(), &ExistsRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.True(t, exists)
 }
@@ -81,7 +81,7 @@ func TestMemcachedExists_Success(t *testing.T) {
 func TestMemcachedExists_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(nil, errors.New("some error"))
-	exists, err := cache.Exists(&ExistsRequest{Key: "key"})
+	exists, err := cache.Exists(context.Background(), &ExistsRequest{Key: "key"})
 	assert.Error(t, err)
 	assert.False(t, exists)
 }
@@ -89,7 +89,7 @@ func TestMemcachedExists_Error(t *testing.T) {
 func TestMemcachedExists_CacheMiss(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(nil, memcache.ErrCacheMiss)
-	exists, err := cache.Exists(&ExistsRequest{Key: "key"})
+	exists, err := cache.Exists(context.Background(), &ExistsRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.False(t, exists)
 }
@@ -97,7 +97,7 @@ func TestMemcachedExists_CacheMiss(t *testing.T) {
 func TestMemcachedGet_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(&memcache.Item{Value: []byte("hello")}, nil)
-	val, err := cache.Get(&GetRequest{Key: "key"})
+	val, err := cache.Get(context.Background(), &GetRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello"), val)
 }
@@ -105,7 +105,7 @@ func TestMemcachedGet_Success(t *testing.T) {
 func TestMemcachedGet_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(nil, errors.New("error"))
-	val, err := cache.Get(&GetRequest{Key: "key"})
+	val, err := cache.Get(context.Background(), &GetRequest{Key: "key"})
 	assert.Error(t, err)
 	assert.Nil(t, val)
 }
@@ -113,7 +113,7 @@ func TestMemcachedGet_Error(t *testing.T) {
 func TestMemcachedGet_CacheMiss(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Get", mock.Anything).Return(nil, memcache.ErrCacheMiss)
-	val, err := cache.Get(&GetRequest{Key: "key"})
+	val, err := cache.Get(context.Background(), &GetRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.Nil(t, val)
 }
@@ -121,7 +121,7 @@ func TestMemcachedGet_CacheMiss(t *testing.T) {
 func TestMemcachedSet_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Set", mock.Anything).Return(nil)
-	success, err := cache.Set(&SetRequest{Key: "key", Value: "val"})
+	success, err := cache.Set(context.Background(), &SetRequest{Key: "key", Value: "val"})
 	assert.NoError(t, err)
 	assert.True(t, success)
 }
@@ -129,7 +129,7 @@ func TestMemcachedSet_Success(t *testing.T) {
 func TestMemcachedSet_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Set", mock.Anything).Return(errors.New("error"))
-	success, err := cache.Set(&SetRequest{Key: "key", Value: "val"})
+	success, err := cache.Set(context.Background(), &SetRequest{Key: "key", Value: "val"})
 	assert.Error(t, err)
 	assert.False(t, success)
 }
@@ -143,7 +143,7 @@ func TestMemcachedSet_SerialiseError(t *testing.T) {
 		return nil, errors.New("bad serialize")
 	}
 
-	success, err := cache.Set(&SetRequest{Key: "key", Value: "val"})
+	success, err := cache.Set(context.Background(), &SetRequest{Key: "key", Value: "val"})
 	assert.Error(t, err)
 	assert.False(t, success)
 }
@@ -151,19 +151,19 @@ func TestMemcachedSet_SerialiseError(t *testing.T) {
 func TestMemcachedNumericRangeValidation(t *testing.T) {
 	cache, _ := setupTestCache(t)
 
-	if ok, err := cache.Set(&SetRequest{Key: "key", Value: "val", TTL: int64(math.MaxInt32) + 1}); err == nil || ok {
+	if ok, err := cache.Set(context.Background(), &SetRequest{Key: "key", Value: "val", TTL: int64(math.MaxInt32) + 1}); err == nil || ok {
 		t.Fatalf("expected out-of-range Set TTL to fail, ok=%v err=%v", ok, err)
 	}
-	if _, err := cache.MultiSet(&MultiSetRequest{ValueMap: map[string]any{"k": "v"}, TTL: -1}); err == nil {
+	if _, err := cache.MultiSet(context.Background(), &MultiSetRequest{ValueMap: map[string]any{"k": "v"}, TTL: -1}); err == nil {
 		t.Fatalf("expected negative MultiSet TTL to fail")
 	}
-	if err := cache.Increment(&IncrementRequest{Key: "key", Value: -1}); err == nil {
+	if err := cache.Increment(context.Background(), &IncrementRequest{Key: "key", Value: -1}); err == nil {
 		t.Fatalf("expected negative increment to fail")
 	}
-	if err := cache.Decrement(&DecrementRequest{Key: "key", Value: -1}); err == nil {
+	if err := cache.Decrement(context.Background(), &DecrementRequest{Key: "key", Value: -1}); err == nil {
 		t.Fatalf("expected negative decrement to fail")
 	}
-	if err := cache.SetTTL(&SetTTLRequest{Key: "key", TTL: int64(math.MaxInt32) + 1}); err == nil {
+	if err := cache.SetTTL(context.Background(), &SetTTLRequest{Key: "key", TTL: int64(math.MaxInt32) + 1}); err == nil {
 		t.Fatalf("expected out-of-range SetTTL to fail")
 	}
 }
@@ -171,7 +171,7 @@ func TestMemcachedNumericRangeValidation(t *testing.T) {
 func TestMemcachedDelete_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(nil)
-	ok, err := cache.Delete(&DeleteRequest{Key: "key"})
+	ok, err := cache.Delete(context.Background(), &DeleteRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.True(t, ok)
 }
@@ -179,7 +179,7 @@ func TestMemcachedDelete_Success(t *testing.T) {
 func TestMemcachedDelete_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(errors.New("error"))
-	ok, err := cache.Delete(&DeleteRequest{Key: "key"})
+	ok, err := cache.Delete(context.Background(), &DeleteRequest{Key: "key"})
 	assert.Error(t, err)
 	assert.False(t, ok)
 }
@@ -187,7 +187,7 @@ func TestMemcachedDelete_Error(t *testing.T) {
 func TestMemcachedDelete_CacheMiss(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(memcache.ErrCacheMiss)
-	ok, err := cache.Delete(&DeleteRequest{Key: "key"})
+	ok, err := cache.Delete(context.Background(), &DeleteRequest{Key: "key"})
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
@@ -195,7 +195,7 @@ func TestMemcachedDelete_CacheMiss(t *testing.T) {
 func TestMemcachedMultiGet_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("GetMulti", mock.Anything).Return(map[string]*memcache.Item{"k1": {Value: []byte("v1")}}, nil)
-	res, err := cache.MultiGet(&MultiGetRequest{Keys: []string{"k1"}})
+	res, err := cache.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{"k1"}})
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("v1"), res["k1"])
 }
@@ -203,7 +203,7 @@ func TestMemcachedMultiGet_Success(t *testing.T) {
 func TestMemcachedMultiGet_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("GetMulti", mock.Anything).Return(nil, errors.New("error"))
-	res, err := cache.MultiGet(&MultiGetRequest{Keys: []string{"k1"}})
+	res, err := cache.MultiGet(context.Background(), &MultiGetRequest{Keys: []string{"k1"}})
 	assert.Error(t, err)
 	assert.Nil(t, res)
 }
@@ -211,7 +211,7 @@ func TestMemcachedMultiGet_Error(t *testing.T) {
 func TestMemcachedMultiSet_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Set", mock.Anything).Return(nil)
-	res, err := cache.MultiSet(&MultiSetRequest{ValueMap: map[string]any{"k1": "v1"}})
+	res, err := cache.MultiSet(context.Background(), &MultiSetRequest{ValueMap: map[string]any{"k1": "v1"}})
 	assert.NoError(t, err)
 	assert.True(t, res["k1"])
 }
@@ -219,14 +219,14 @@ func TestMemcachedMultiSet_Success(t *testing.T) {
 func TestMemcachedMultiSet_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Set", mock.Anything).Return(errors.New("error"))
-	res, err := cache.MultiSet(&MultiSetRequest{ValueMap: map[string]any{"k1": "v1"}})
+	res, err := cache.MultiSet(context.Background(), &MultiSetRequest{ValueMap: map[string]any{"k1": "v1"}})
 	assert.Error(t, err)
 	assert.False(t, res["k1"])
 }
 
 func TestMemcachedMultiSet_SerialiseError(t *testing.T) {
 	cache, _ := setupTestCache(t)
-	res, err := cache.MultiSet(&MultiSetRequest{ValueMap: map[string]any{"k1": make(chan int)}})
+	res, err := cache.MultiSet(context.Background(), &MultiSetRequest{ValueMap: map[string]any{"k1": make(chan int)}})
 	assert.Error(t, err)
 	assert.False(t, res["k1"])
 }
@@ -234,7 +234,7 @@ func TestMemcachedMultiSet_SerialiseError(t *testing.T) {
 func TestMemcachedMultiDelete_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(nil)
-	res, err := cache.MultiDelete(&MultiDeleteRequest{Keys: []string{"k1"}})
+	res, err := cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{"k1"}})
 	assert.NoError(t, err)
 	assert.True(t, res["k1"])
 }
@@ -242,7 +242,7 @@ func TestMemcachedMultiDelete_Success(t *testing.T) {
 func TestMemcachedMultiDelete_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(errors.New("error"))
-	res, err := cache.MultiDelete(&MultiDeleteRequest{Keys: []string{"k1"}})
+	res, err := cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{"k1"}})
 	assert.Error(t, err)
 	assert.Nil(t, res)
 }
@@ -250,7 +250,7 @@ func TestMemcachedMultiDelete_Error(t *testing.T) {
 func TestMemcachedMultiDelete_CacheMiss(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Delete", mock.Anything).Return(memcache.ErrCacheMiss)
-	res, err := cache.MultiDelete(&MultiDeleteRequest{Keys: []string{"k1"}})
+	res, err := cache.MultiDelete(context.Background(), &MultiDeleteRequest{Keys: []string{"k1"}})
 	assert.NoError(t, err)
 	assert.False(t, res["k1"])
 }
@@ -258,42 +258,42 @@ func TestMemcachedMultiDelete_CacheMiss(t *testing.T) {
 func TestMemcachedIncrement_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Increment", mock.Anything, mock.Anything).Return(uint64(1), nil)
-	err := cache.Increment(&IncrementRequest{Key: "key", Value: 1})
+	err := cache.Increment(context.Background(), &IncrementRequest{Key: "key", Value: 1})
 	assert.NoError(t, err)
 }
 
 func TestMemcachedIncrement_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Increment", mock.Anything, mock.Anything).Return(uint64(0), errors.New("error"))
-	err := cache.Increment(&IncrementRequest{Key: "key", Value: 1})
+	err := cache.Increment(context.Background(), &IncrementRequest{Key: "key", Value: 1})
 	assert.Error(t, err)
 }
 
 func TestMemcachedDecrement_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Decrement", mock.Anything, mock.Anything).Return(uint64(1), nil)
-	err := cache.Decrement(&DecrementRequest{Key: "key", Value: 1})
+	err := cache.Decrement(context.Background(), &DecrementRequest{Key: "key", Value: 1})
 	assert.NoError(t, err)
 }
 
 func TestMemcachedDecrement_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Decrement", mock.Anything, mock.Anything).Return(uint64(0), errors.New("error"))
-	err := cache.Decrement(&DecrementRequest{Key: "key", Value: 1})
+	err := cache.Decrement(context.Background(), &DecrementRequest{Key: "key", Value: 1})
 	assert.Error(t, err)
 }
 
 func TestMemcachedAppend_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Append", mock.Anything).Return(nil)
-	err := cache.Append(&AppendRequest{Key: "key", Value: "v"})
+	err := cache.Append(context.Background(), &AppendRequest{Key: "key", Value: "v"})
 	assert.NoError(t, err)
 }
 
 func TestMemcachedAppend_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Append", mock.Anything).Return(errors.New("error"))
-	err := cache.Append(&AppendRequest{Key: "key", Value: "v"})
+	err := cache.Append(context.Background(), &AppendRequest{Key: "key", Value: "v"})
 	assert.Error(t, err)
 }
 
@@ -306,13 +306,13 @@ func TestMemcachedAppend_SerialiseError(t *testing.T) {
 		return nil, errors.New("bad serialize")
 	}
 
-	err := cache.Append(&AppendRequest{Key: "key", Value: "v"})
+	err := cache.Append(context.Background(), &AppendRequest{Key: "key", Value: "v"})
 	assert.Error(t, err)
 }
 
 func TestMemcachedGetTTL_Unsupported(t *testing.T) {
 	cache, _ := setupTestCache(t)
-	_, err := cache.GetTTL(&GetTTLRequest{Key: "key"})
+	_, err := cache.GetTTL(context.Background(), &GetTTLRequest{Key: "key"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "GetTTL not supported")
 }
@@ -334,48 +334,48 @@ func TestMemcachedContextMethodsCanceled(t *testing.T) {
 		run  func() error
 	}{
 		{"Exists", func() error {
-			_, err := cache.ExistsContext(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Exists(ctx, &ExistsRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Get", func() error {
-			_, err := cache.GetContext(ctx, &GetRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Get(ctx, &GetRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"Set", func() error {
-			_, err := cache.SetContext(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
+			_, err := cache.Set(ctx, &SetRequest{cacheRequest: request, Key: "k", Value: "v"})
 			return err
 		}},
 		{"Delete", func() error {
-			_, err := cache.DeleteContext(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.Delete(ctx, &DeleteRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"MultiGet", func() error {
-			_, err := cache.MultiGetContext(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiGet(ctx, &MultiGetRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"MultiSet", func() error {
-			_, err := cache.MultiSetContext(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
+			_, err := cache.MultiSet(ctx, &MultiSetRequest{cacheRequest: request, ValueMap: map[string]any{"k": "v"}})
 			return err
 		}},
 		{"MultiDelete", func() error {
-			_, err := cache.MultiDeleteContext(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
+			_, err := cache.MultiDelete(ctx, &MultiDeleteRequest{cacheRequest: request, Keys: []string{"k"}})
 			return err
 		}},
 		{"Increment", func() error {
-			return cache.IncrementContext(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return cache.Increment(ctx, &IncrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Decrement", func() error {
-			return cache.DecrementContext(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
+			return cache.Decrement(ctx, &DecrementRequest{cacheRequest: request, Key: "k", Value: 1})
 		}},
 		{"Append", func() error {
-			return cache.AppendContext(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
+			return cache.Append(ctx, &AppendRequest{cacheRequest: request, Key: "k", Value: "v"})
 		}},
 		{"GetTTL", func() error {
-			_, err := cache.GetTTLContext(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
+			_, err := cache.GetTTL(ctx, &GetTTLRequest{cacheRequest: request, Key: "k"})
 			return err
 		}},
 		{"SetTTL", func() error {
-			return cache.SetTTLContext(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
+			return cache.SetTTL(ctx, &SetTTLRequest{cacheRequest: request, Key: "k", TTL: 1})
 		}},
 	}
 
@@ -390,14 +390,14 @@ func TestMemcachedContextMethodsCanceled(t *testing.T) {
 func TestMemcachedSetTTL_Success(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Touch", mock.Anything, mock.Anything).Return(nil)
-	err := cache.SetTTL(&SetTTLRequest{Key: "key", TTL: 10})
+	err := cache.SetTTL(context.Background(), &SetTTLRequest{Key: "key", TTL: 10})
 	assert.NoError(t, err)
 }
 
 func TestMemcachedSetTTL_Error(t *testing.T) {
 	cache, client := setupTestCache(t)
 	client.On("Touch", mock.Anything, mock.Anything).Return(errors.New("error"))
-	err := cache.SetTTL(&SetTTLRequest{Key: "key", TTL: 10})
+	err := cache.SetTTL(context.Background(), &SetTTLRequest{Key: "key", TTL: 10})
 	assert.Error(t, err)
 }
 

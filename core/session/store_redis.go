@@ -24,7 +24,7 @@ func newRedisStore(cfg StoreOptions) (*redisStore, func() error, error) {
 		PoolSize: cfg.PoolSize,
 	})
 
-	conn, err := redisConnect(redisConnectorFactory(), cfg.Name)
+	conn, err := redisConnect(context.Background(), redisConnectorFactory(), cfg.Name)
 	if err != nil {
 		return nil, nil, err
 	}

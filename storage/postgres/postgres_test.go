@@ -115,28 +115,21 @@ func (m *mockPgDB) Close() error {
 	m.closeCalled++
 	return m.closeErr
 }
-func (m *mockPgDB) Ping() error { return nil }
-func (m *mockPgDB) PingContext(ctx context.Context) error {
+func (m *mockPgDB) Ping(ctx context.Context) error {
 	m.pingCtxCalled++
 	return m.pingCtxErr
 }
 
-func (m *mockPgDB) Exec(query string, args ...any) (sql.Result, error) {
+func (m *mockPgDB) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return stubResult{rows: 1, last: 1}, nil
 }
-func (m *mockPgDB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return stubResult{rows: 1, last: 1}, nil
-}
-func (m *mockPgDB) Query(query string, args ...any) (*sql.Rows, error) { return nil, nil }
-func (m *mockPgDB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+func (m *mockPgDB) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return nil, nil
 }
-func (m *mockPgDB) QueryRow(query string, args ...any) *sql.Row { return &sql.Row{} }
-func (m *mockPgDB) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+func (m *mockPgDB) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
 	return &sql.Row{}
 }
-func (m *mockPgDB) Prepare(query string) (*sql.Stmt, error) { return nil, nil }
-func (m *mockPgDB) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (m *mockPgDB) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	return nil, nil
 }
 func (m *mockPgDB) Begin() (*sql.Tx, error) { return nil, nil }
@@ -173,27 +166,24 @@ func TestPostgresDb_Forwards_All_Methods(t *testing.T) {
 	pdb := &PostgresDb{DB: db}
 
 	// Close is tested via defer db.Close; still hit pdb.Close explicitly
-	if err := pdb.Ping(); err != nil {
+	if err := pdb.Ping(context.Background()); err != nil {
 		t.Fatalf("Ping err: %v", err)
 	}
-	if err := pdb.PingContext(context.Background()); err != nil {
-		t.Fatalf("PingContext err: %v", err)
-	}
 
-	res, err := pdb.Exec("UPDATE t SET a=1")
+	res, err := pdb.Exec(context.Background(), "UPDATE t SET a=1")
 	if err != nil {
 		t.Fatalf("Exec err: %v", err)
 	}
 	_, _ = res.RowsAffected()
 	_, _ = res.LastInsertId()
 
-	res, err = pdb.ExecContext(context.Background(), "UPDATE t SET a=2")
+	res, err = pdb.Exec(context.Background(), "UPDATE t SET a=2")
 	if err != nil {
 		t.Fatalf("ExecContext err: %v", err)
 	}
 	_, _ = res.RowsAffected()
 
-	rows, err := pdb.Query("SELECT 1")
+	rows, err := pdb.Query(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("Query err: %v", err)
 	}
@@ -201,7 +191,7 @@ func TestPostgresDb_Forwards_All_Methods(t *testing.T) {
 		_ = rows.Close()
 	}
 
-	rows, err = pdb.QueryContext(context.Background(), "SELECT 1")
+	rows, err = pdb.Query(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("QueryContext err: %v", err)
 	}
@@ -209,10 +199,9 @@ func TestPostgresDb_Forwards_All_Methods(t *testing.T) {
 		_ = rows.Close()
 	}
 
-	_ = pdb.QueryRow("SELECT 1")
-	_ = pdb.QueryRowContext(context.Background(), "SELECT 1")
+	_ = pdb.QueryRow(context.Background(), "SELECT 1")
 
-	st, err := pdb.Prepare("SELECT 1")
+	st, err := pdb.Prepare(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("Prepare err: %v", err)
 	}
@@ -220,7 +209,7 @@ func TestPostgresDb_Forwards_All_Methods(t *testing.T) {
 		_ = st.Close()
 	}
 
-	st, err = pdb.PrepareContext(context.Background(), "SELECT 1")
+	st, err = pdb.Prepare(context.Background(), "SELECT 1")
 	if err != nil {
 		t.Fatalf("PrepareContext err: %v", err)
 	}

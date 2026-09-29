@@ -29,23 +29,8 @@ type TinyLFU[K any] struct {
 	admitOnEq bool
 }
 
-// NewTinyLFU constructs a TinyLFU with the provided parameters and hash function.
-// For convenience, this keeps the classic signature. Prefer NewTinyLFUWithOptions
-// for full control.
-func NewTinyLFU[K any](depth int, width uint64, agingEvery uint64, hash Hasher[K]) (*TinyLFU[K], error) {
-	return NewTinyLFUWithOptions(TinyLFUOptions[K]{
-		Depth:        depth,
-		Width:        width,
-		AgingEvery:   agingEvery,
-		AdmitOnEqual: true,
-		Hash:         hash,
-	})
-}
-
-// NewTinyLFUWithOptions constructs a TinyLFU using TinyLFUOptions. Hash is
-// required; panics if nil. Returns an error if the underlying sketch cannot be
-// created (invalid depth/width, etc.).
-func NewTinyLFUWithOptions[K any](opt TinyLFUOptions[K]) (*TinyLFU[K], error) {
+// NewTinyLFU constructs a TinyLFU using TinyLFUOptions. Hash is required; panics if nil.
+func NewTinyLFU[K any](opt TinyLFUOptions[K]) (*TinyLFU[K], error) {
 	if opt.Hash == nil {
 		panic("tinylfu: nil hash")
 	}

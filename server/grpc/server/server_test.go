@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"os/signal"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -77,15 +78,18 @@ func TestStartGRPCServer_ShutdownSignal(t *testing.T) {
 	}
 
 	done := make(chan struct{})
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
+	defer stop()
 	go func() {
 		defer close(done)
-		_ = StartGRPCServer(opts)
+		_ = StartGRPCServer(ctx, opts)
 	}()
 
 	time.Sleep(200 * time.Millisecond) // ensure server starts
 
 	_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	<-done
+	stop()
 
 	assert.True(t, shutdownCalled.Load(), "ShutdownHook should have been called")
 
@@ -106,9 +110,11 @@ func TestStartGRPCServer_ShutdownSignal(t *testing.T) {
 	}
 
 	done = make(chan struct{})
+	ctx, stop = signal.NotifyContext(context.Background(), syscall.SIGINT)
+	defer stop()
 	go func() {
 		defer close(done)
-		_ = StartGRPCServer(opts)
+		_ = StartGRPCServer(ctx, opts)
 	}()
 
 	time.Sleep(200 * time.Millisecond) // ensure server starts
@@ -132,13 +138,13 @@ func TestStartGRPCServer_BindError(t *testing.T) {
 		ServerLogger: getLogger("TestStartGRPCServer_BindError"),
 	}
 
-	err = StartGRPCServer(opts)
+	err = StartGRPCServer(context.Background(), opts)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to listen")
 }
 
 func TestStartGRPCServer_RejectsAccidentalInsecureDefault(t *testing.T) {
-	err := StartGRPCServer(&ServerOptions{
+	err := StartGRPCServer(context.Background(), &ServerOptions{
 		Port:         12348,
 		ServerLogger: getLogger("TestStartGRPCServer_RejectsAccidentalInsecureDefault"),
 	})
@@ -146,7 +152,7 @@ func TestStartGRPCServer_RejectsAccidentalInsecureDefault(t *testing.T) {
 }
 
 func TestStartGRPCServer_RejectsProductionReflection(t *testing.T) {
-	err := StartGRPCServerContext(context.TODO(), &ServerOptions{
+	err := StartGRPCServer(context.TODO(), &ServerOptions{
 		Port:             12349,
 		Insecure:         true,
 		EnableReflection: true,
@@ -154,6 +160,24 @@ func TestStartGRPCServer_RejectsProductionReflection(t *testing.T) {
 		ServerLogger:     getLogger("TestStartGRPCServer_RejectsProductionReflection"),
 	})
 	assert.EqualError(t, err, "gRPC reflection requires AllowReflectionInProduction in production")
+}
+
+func TestStartGRPCServer_NilContext(t *testing.T) {
+	origServe := grpcServeFn
+	defer func() { grpcServeFn = origServe }()
+
+	grpcServeFn = func(server *grpc.Server, lis net.Listener) error {
+		assert.NoError(t, lis.Close())
+		return errors.New("serve failed")
+	}
+
+	var nilCtx context.Context
+	err := StartGRPCServer(nilCtx, &ServerOptions{
+		Port:         0,
+		Insecure:     true,
+		ServerLogger: getLogger("TestStartGRPCServer_NilContext"),
+	})
+	assert.EqualError(t, err, "gRPC server error: serve failed")
 }
 
 func TestStartGRPCServer_AllowsProductionReflectionWithOptIn(t *testing.T) {
@@ -165,7 +189,7 @@ func TestStartGRPCServer_AllowsProductionReflectionWithOptIn(t *testing.T) {
 		return errors.New("serve failed")
 	}
 
-	err := StartGRPCServerContext(context.Background(), &ServerOptions{
+	err := StartGRPCServer(context.Background(), &ServerOptions{
 		Port:                        12350,
 		Insecure:                    true,
 		EnableReflection:            true,
@@ -182,7 +206,7 @@ func TestStartGRPCServer_ContextShutdown(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- StartGRPCServerContext(ctx, &ServerOptions{
+		done <- StartGRPCServer(ctx, &ServerOptions{
 			Port:            12351,
 			Insecure:        true,
 			ShutdownTimeout: 500 * time.Millisecond,
@@ -226,7 +250,7 @@ func TestStartGRPCServer_ReturnsServeError(t *testing.T) {
 		ServerLogger: getLogger("TestStartGRPCServer_ReturnsServeError"),
 	}
 
-	err := StartGRPCServer(opts)
+	err := StartGRPCServer(context.Background(), opts)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "gRPC server error: serve failed")
 }
@@ -240,7 +264,7 @@ func TestStartGRPCServer_IgnoresServerStopped(t *testing.T) {
 		return grpc.ErrServerStopped
 	}
 
-	err := StartGRPCServerContext(context.Background(), &ServerOptions{
+	err := StartGRPCServer(context.Background(), &ServerOptions{
 		Insecure:     true,
 		Port:         12352,
 		ServerLogger: getLogger("TestStartGRPCServer_IgnoresServerStopped"),

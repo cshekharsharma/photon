@@ -306,7 +306,7 @@ func handleMiddlewares(router router.Router, serverconfig *ServerConfig) router.
 	router.Use(middleware.Heartbeat("/heartbeat"))
 	router.Use(middleware.RequestId)
 	router.Use(middleware.Recoverer(serverconfig.ErrorLogger))
-	router.Use(middleware.SecurityHeaders)
+	router.Use(middleware.SecurityHeaders(middleware.SecurityHeadersOptions{}))
 	router.Use(middleware.RequestLogger(serverconfig.AccessLogger))
 	router.Use(middleware.RequestInit)
 
@@ -492,5 +492,5 @@ func runBackgroundWorkers(serverconfig *ServerConfig) {
 	}
 	workers.SetOverseerSleepTimeout(serverconfig.WorkerSleepTimeout)
 
-	startOverseerFunc(serverconfig.BGWorkers, serverconfig.ServerLogger)
+	startOverseerFunc(context.Background(), serverconfig.BGWorkers, serverconfig.ServerLogger, nil)
 }

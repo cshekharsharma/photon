@@ -68,7 +68,7 @@ func TestPublisherRoutesEmailHighPriority(t *testing.T) {
 	mq := &mqStub{}
 	publisher, err := NewPublisher(mq, QueueConfig{
 		EmailHighPriorityURL: "https://example.com/email-high",
-	})
+	}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestPublisherUsesFIFOGroupID(t *testing.T) {
 	mq := &mqStub{}
 	publisher, err := NewPublisher(mq, QueueConfig{
 		SMSHighPriorityURL: "https://example.com/sms-high.fifo",
-	})
+	}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestPublisherUsesFIFOGroupID(t *testing.T) {
 func TestPublisherUsesFIFODedupeWhenSupported(t *testing.T) {
 	mq := &dedupeMQStub{}
 	var audit PublishAuditEvent
-	publisher, err := NewPublisherWithOptions(mq, QueueConfig{
+	publisher, err := NewPublisher(mq, QueueConfig{
 		SMSHighPriorityURL: "https://example.com/sms-high.fifo",
 	}, PublisherOptions{
 		AuditHook: func(event PublishAuditEvent) { audit = event },
@@ -150,7 +150,7 @@ func TestPublisherUsesFIFODedupeWhenSupported(t *testing.T) {
 
 func TestPublisherAuditHookOnFailure(t *testing.T) {
 	var audit PublishAuditEvent
-	publisher, err := NewPublisherWithOptions(&mqStub{sendErr: errors.New("send failed")}, QueueConfig{
+	publisher, err := NewPublisher(&mqStub{sendErr: errors.New("send failed")}, QueueConfig{
 		EmailHighPriorityURL: "https://example.com/email-high",
 	}, PublisherOptions{
 		AuditHook: func(event PublishAuditEvent) { audit = event },
@@ -186,7 +186,7 @@ func TestPublisherHelpers(t *testing.T) {
 }
 
 func TestNewPublisherRequiresMessageQueue(t *testing.T) {
-	publisher, err := NewPublisher(nil, QueueConfig{})
+	publisher, err := NewPublisher(nil, QueueConfig{}, PublisherOptions{})
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -197,7 +197,7 @@ func TestNewPublisherRequiresMessageQueue(t *testing.T) {
 }
 
 func TestNewPublisherRejectsWhitespaceQueueURL(t *testing.T) {
-	publisher, err := NewPublisher(&mqStub{}, QueueConfig{EmailHighPriorityURL: "   "})
+	publisher, err := NewPublisher(&mqStub{}, QueueConfig{EmailHighPriorityURL: "   "}, PublisherOptions{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -207,7 +207,7 @@ func TestNewPublisherRejectsWhitespaceQueueURL(t *testing.T) {
 }
 
 func TestPublisherPublishRequiresMessage(t *testing.T) {
-	publisher, err := NewPublisher(&mqStub{}, QueueConfig{})
+	publisher, err := NewPublisher(&mqStub{}, QueueConfig{}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestPublisherPublishRequiresMessage(t *testing.T) {
 }
 
 func TestPublisherPublishReturnsResolveError(t *testing.T) {
-	publisher, err := NewPublisher(&mqStub{}, QueueConfig{})
+	publisher, err := NewPublisher(&mqStub{}, QueueConfig{}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestPublisherPublishReturnsResolveError(t *testing.T) {
 func TestPublisherPublishReturnsMarshalError(t *testing.T) {
 	publisher, err := NewPublisher(&mqStub{}, QueueConfig{
 		EmailHighPriorityURL: "https://example.com/email-high",
-	})
+	}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestPublisherPublishReturnsMarshalError(t *testing.T) {
 func TestPublisherPublishReturnsSendError(t *testing.T) {
 	publisher, err := NewPublisher(&mqStub{sendErr: errors.New("send failed")}, QueueConfig{
 		EmailHighPriorityURL: "https://example.com/email-high",
-	})
+	}, PublisherOptions{})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
 	}

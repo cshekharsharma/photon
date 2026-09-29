@@ -25,6 +25,12 @@ const (
 //   - ServiceDiscovery: Concrete implementation (e.g., consulDiscovery).
 //   - error: If the provider is unsupported or setup fails.
 func New(ctx context.Context, opts *Options) (ServiceDiscovery, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
